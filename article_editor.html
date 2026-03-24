@@ -937,12 +937,19 @@ function wrapHTML(body) {
 function parseHtmlToBlocks(htmlStr) {
   if (!htmlStr || !htmlStr.trim()) return [];
   var doc;
-  try { doc = new DOMParser().parseFromString(htmlStr, 'text/html'); } catch(e) { return null; }
+  try { doc = new DOMParser().parseFromString(htmlStr, 'text/html'); } catch(e) { console.error('HTML parse error:', e); return null; }
   var ar = doc.querySelector('.ar');
   if (!ar) return null;
   var children = Array.prototype.slice.call(ar.children);
   var blocks = [];
   var i = 0;
+  // Helper: extract numbered caption from a figcaption/tc element
+  function capInfo(container) {
+    if (!container) return { cap: '', num: '' };
+    var sp = container.querySelector('span');
+    if (sp) return { cap: container.textContent.replace(sp.textContent, '').replace(/^[：:]\s*/, '').trim(), num: sp.textContent.trim() };
+    return { cap: container.textContent.trim(), num: '' };
+  }
   while (i < children.length) {
     var el = children[i];
     var tag = el.tagName.toLowerCase();
@@ -1005,26 +1012,15 @@ function parseHtmlToBlocks(htmlStr) {
       if (el.classList.contains('af')) {
         var img = el.querySelector('img');
         var figcap = el.querySelector('figcaption');
-        var capText = '', fignum = '';
-        if (figcap) {
-          var fcspan = figcap.querySelector('span');
-          if (fcspan) { fignum = fcspan.textContent.trim(); capText = figcap.textContent.replace(fcspan.textContent, '').replace(/^[：:]\s*/, '').trim(); }
-          else { capText = figcap.textContent.trim(); }
-        }
-        blocks.push(mkBlock('img', { src: img ? (img.getAttribute('src') || '') : '', alt: img ? (img.getAttribute('alt') || '') : '', caption: capText, fignum: fignum }));
+        var fc = capInfo(figcap);
+        blocks.push(mkBlock('img', { src: img ? (img.getAttribute('src') || '') : '', alt: img ? (img.getAttribute('alt') || '') : '', caption: fc.cap, fignum: fc.num }));
         i++; continue;
       }
       if (el.classList.contains('vw')) {
         var vif = el.querySelector('iframe');
         var vsrc = el.querySelector('video source');
-        var vfigcap = el.querySelector('figcaption');
-        var vcapText = '', vfignum = '';
-        if (vfigcap) {
-          var vspan = vfigcap.querySelector('span');
-          if (vspan) { vfignum = vspan.textContent.trim(); vcapText = vfigcap.textContent.replace(vspan.textContent, '').replace(/^[：:]\s*/, '').trim(); }
-          else { vcapText = vfigcap.textContent.trim(); }
-        }
-        blocks.push(mkBlock('video', { vtype: vif ? 'iframe' : 'file', src: vif ? (vif.getAttribute('src') || '') : (vsrc ? (vsrc.getAttribute('src') || '') : ''), caption: vcapText, fignum: vfignum }));
+        var vfc = capInfo(el.querySelector('figcaption'));
+        blocks.push(mkBlock('video', { vtype: vif ? 'iframe' : 'file', src: vif ? (vif.getAttribute('src') || '') : (vsrc ? (vsrc.getAttribute('src') || '') : ''), caption: vfc.cap, fignum: vfc.num }));
         i++; continue;
       }
       i++; continue;
@@ -1059,20 +1055,15 @@ function parseHtmlToBlocks(htmlStr) {
       }
       if (el.classList.contains('tw')) {
         var tbl = el.querySelector('table');
-        var headers = [], rows = [], caption = '', tablenum = '';
-        var tc = el.querySelector('.tc');
-        if (tc) {
-          var tcspan = tc.querySelector('span');
-          if (tcspan) { tablenum = tcspan.textContent.trim(); caption = tc.textContent.replace(tcspan.textContent, '').replace(/^[：:]\s*/, '').trim(); }
-          else { caption = tc.textContent.trim(); }
-        }
+        var headers = [], rows = [];
+        var tci = capInfo(el.querySelector('.tc'));
         if (tbl) {
           headers = Array.prototype.slice.call(tbl.querySelectorAll('thead th')).map(function(th){ return th.textContent.trim(); });
           rows = Array.prototype.slice.call(tbl.querySelectorAll('tbody tr')).map(function(tr){
             return Array.prototype.slice.call(tr.querySelectorAll('td')).map(function(td){ return td.textContent.trim(); });
           });
         }
-        blocks.push(mkBlock('table', { headers: headers, rows: rows, caption: caption, tablenum: tablenum }));
+        blocks.push(mkBlock('table', { headers: headers, rows: rows, caption: tci.cap, tablenum: tci.num }));
         i++; continue;
       }
       if (el.classList.contains('cbw')) {
