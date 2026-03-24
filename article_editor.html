@@ -87,6 +87,14 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   font-size:10px;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:all .1s
 }
 .bcb:hover{color:var(--ac);background:var(--acl)}
+.bdrag{
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  cursor:grab;border-radius:var(--r4);color:var(--t2);font-size:12px;
+  user-select:none;transition:all .1s
+}
+.bdrag:hover{color:var(--ac);background:var(--acl)}
+.bdrag:active{cursor:grabbing}
+.bi.drag-over{outline:2px dashed var(--acm);outline-offset:1px;background:rgba(38,68,186,.04)}
 
 /* Block type badge */
 .btbadge{
@@ -526,6 +534,7 @@ var _idSeq   = 0;
 var _editingBlock = null;
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
+var _draggingId = null; // block id being dragged for reorder
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -661,11 +670,24 @@ function insertBlock(type, data) {
    APPEND ONE BLOCK ELEMENT
    Called ONCE per block. Never touches existing elements.
    ========================================================= */
-function _appendBlockEl(b) {
-  // Remove empty hint if present
-  var hint = $id('ehint');
-  if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+function _mkDragHandle(bid) {
+  var h = document.createElement('div');
+  h.className = 'bdrag'; h.draggable = true; h.title = '拖动排序'; h.textContent = '⠿';
+  h.addEventListener('dragstart', function(e) {
+    _draggingId = bid;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', bid);
+    setTimeout(function(){ var el=$id(bid); if(el) el.style.opacity='.4'; }, 0);
+  });
+  h.addEventListener('dragend', function() {
+    var el=$id(bid); if(el) el.style.opacity='';
+    _draggingId = null;
+    document.querySelectorAll('.bi.drag-over').forEach(function(n){ n.classList.remove('drag-over'); });
+  });
+  return h;
+}
 
+function _buildBlockEl(b) {
   var el = document.createElement('div');
   el.id = b.id;
   el.className = 'bi bi-' + b.type;
@@ -676,7 +698,7 @@ function _appendBlockEl(b) {
   var btnDn = document.createElement('button'); btnDn.className='bcb'; btnDn.title='下移'; btnDn.textContent='↓';
   btnUp.addEventListener('click', function(e){ e.stopPropagation(); moveBlock(b.id,-1); });
   btnDn.addEventListener('click', function(e){ e.stopPropagation(); moveBlock(b.id, 1); });
-  ctrl.appendChild(btnUp); ctrl.appendChild(btnDn);
+  ctrl.appendChild(btnUp); ctrl.appendChild(_mkDragHandle(b.id)); ctrl.appendChild(btnDn);
   el.appendChild(ctrl);
 
   // ── Badge ──
@@ -692,8 +714,28 @@ function _appendBlockEl(b) {
   // ── Events ──
   el.addEventListener('click', function(){ setSelected(b.id); });
   el.addEventListener('contextmenu', function(e){ e.preventDefault(); _openCtx(e, b.id); });
+  el.addEventListener('dragover', function(e) {
+    if (!_draggingId || _draggingId === b.id) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    el.classList.add('drag-over');
+  });
+  el.addEventListener('dragleave', function(e) {
+    if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+  });
+  el.addEventListener('drop', function(e) {
+    e.preventDefault(); el.classList.remove('drag-over');
+    if (_draggingId && _draggingId !== b.id) reorderBlock(_draggingId, b.id);
+  });
 
-  $id('blist').appendChild(el);
+  return el;
+}
+
+function _appendBlockEl(b) {
+  // Remove empty hint if present
+  var hint = $id('ehint');
+  if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+
+  $id('blist').appendChild(_buildBlockEl(b));
 }
 
 /* =========================================================
@@ -937,6 +979,19 @@ function moveBlock(id, dir) {
   syncCode(); schedPv();
 }
 
+function reorderBlock(fromId, toId) {
+  var fi = _blocks.findIndex(function(b){ return b.id===fromId; });
+  if (fi<0) return;
+  var moved = _blocks.splice(fi, 1)[0];
+  var ti = _blocks.findIndex(function(b){ return b.id===toId; });
+  if (ti<0) { _blocks.splice(fi, 0, moved); return; } // rollback if target gone
+  _blocks.splice(ti, 0, moved);
+  var bl = $id('blist');
+  var fromEl = $id(fromId), toEl = $id(toId);
+  if (fromEl && toEl) bl.insertBefore(fromEl, toEl);
+  syncCode(); schedPv();
+}
+
 function deleteBlock(id) {
   var el=$id(id); if(el) el.remove();
   _blocks = _blocks.filter(function(b){ return b.id!==id; });
@@ -950,18 +1005,7 @@ function duplicateBlock(id) {
   var i=_blocks.findIndex(function(b){ return b.id===id; });
   _blocks.splice(i+1,0,copy);
   var origEl=$id(id);
-  // Build new element
-  var newEl=document.createElement('div'); newEl.id=copy.id; newEl.className='bi bi-'+copy.type;
-  var ctrl=mkDiv('bctrl');
-  var bu=document.createElement('button'); bu.className='bcb'; bu.textContent='↑';
-  var bd=document.createElement('button'); bd.className='bcb'; bd.textContent='↓';
-  bu.addEventListener('click',function(e){e.stopPropagation();moveBlock(copy.id,-1);});
-  bd.addEventListener('click',function(e){e.stopPropagation();moveBlock(copy.id, 1);});
-  ctrl.appendChild(bu); ctrl.appendChild(bd); newEl.appendChild(ctrl);
-  var badge=document.createElement('span'); badge.className='btbadge'; badge.textContent=copy.label; newEl.appendChild(badge);
-  var inner=mkDiv('binn'); _buildInner(inner,copy); newEl.appendChild(inner);
-  newEl.addEventListener('click',function(){setSelected(copy.id);});
-  newEl.addEventListener('contextmenu',function(e){e.preventDefault();_openCtx(e,copy.id);});
+  var newEl = _buildBlockEl(copy);
   if(origEl&&origEl.nextSibling) origEl.parentNode.insertBefore(newEl,origEl.nextSibling);
   else $id('blist').appendChild(newEl);
   _updateCount(); syncCode(); schedPv();
