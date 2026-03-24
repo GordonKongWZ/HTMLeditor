@@ -337,9 +337,9 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .fmt-clr-clear{background:linear-gradient(135deg,#f00 33%,#0c0 66%,#00f)}
 
 /* ── Preview responsive full-height ── */
-#pouter.pv-resp{align-items:stretch}
-#pouter.pv-resp #pfwrap{height:100%}
-#pouter.pv-resp #pframe{min-height:0;height:100%}
+#pouter.pv-resp{flex-direction:column;align-items:stretch;padding:0;overflow:hidden}
+#pouter.pv-resp #pfwrap{flex:1;width:100% !important;height:auto;min-height:0;transform:none !important;margin-bottom:0 !important}
+#pouter.pv-resp #pframe{height:100%;min-height:0;border-radius:0;border-left:none;border-right:none;box-shadow:none}
 
 /* ── Paragraph alignment row ── */
 .align-row{display:flex;gap:2px;margin-top:5px;padding-top:4px;border-top:.5px solid var(--bl)}
@@ -527,6 +527,14 @@ var _editingBlock = null;
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 
 function uid() { return 'b' + (++_idSeq); }
+
+/* Shared alignment button definitions */
+var ALIGN_DEFS = [
+  { v:'left',    label:'左对齐',   svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="0" y1="5" x2="8" y2="5"/><line x1="0" y1="8" x2="10" y2="8"/></svg>' },
+  { v:'center',  label:'居中',     svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="2" y1="5" x2="10" y2="5"/><line x1="1" y1="8" x2="11" y2="8"/></svg>' },
+  { v:'right',   label:'右对齐',   svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="4" y1="5" x2="12" y2="5"/><line x1="2" y1="8" x2="12" y2="8"/></svg>' },
+  { v:'justify', label:'两端对齐', svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="0" y1="5" x2="12" y2="5"/><line x1="0" y1="8" x2="12" y2="8"/></svg>' },
+];
 
 /* =========================================================
    BLOCK DEFAULTS
@@ -716,6 +724,25 @@ function _buildInner(inner, b) {
     return d;
   }
 
+  function addAlignRow(b) {
+    var row = mkDiv('align-row');
+    ALIGN_DEFS.forEach(function(a) {
+      var btn = document.createElement('button');
+      btn.className = 'abtn' + (b.data.align === a.v ? ' on' : '');
+      btn.innerHTML = a.svg + a.label;
+      btn.title = a.label;
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        b.data.align = (b.data.align === a.v) ? '' : a.v;
+        row.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
+        if (b.data.align) btn.classList.add('on');
+        syncCode(); schedPv();
+      });
+      row.appendChild(btn);
+    });
+    inner.appendChild(row);
+  }
+
   switch (b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
       addBE(b.content, '输入标题…', function(v){ b.content=v; });
@@ -723,28 +750,7 @@ function _buildInner(inner, b) {
 
     case 'p': {
       addRichBE(b.content, '输入段落文字…', function(v){ b.content=v; });
-      var alignRow = mkDiv('align-row');
-      var ALIGNS = [
-        { v:'left',    label:'左对齐',   svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="0" y1="5" x2="8" y2="5"/><line x1="0" y1="8" x2="10" y2="8"/></svg>' },
-        { v:'center',  label:'居中',     svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="2" y1="5" x2="10" y2="5"/><line x1="1" y1="8" x2="11" y2="8"/></svg>' },
-        { v:'right',   label:'右对齐',   svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="4" y1="5" x2="12" y2="5"/><line x1="2" y1="8" x2="12" y2="8"/></svg>' },
-        { v:'justify', label:'两端对齐', svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="0" y1="5" x2="12" y2="5"/><line x1="0" y1="8" x2="12" y2="8"/></svg>' },
-      ];
-      ALIGNS.forEach(function(a) {
-        var btn = document.createElement('button');
-        btn.className = 'abtn' + (b.data.align === a.v ? ' on' : '');
-        btn.innerHTML = a.svg + a.label;
-        btn.title = a.label;
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          b.data.align = (b.data.align === a.v) ? '' : a.v;
-          alignRow.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
-          if (b.data.align) btn.classList.add('on');
-          syncCode(); schedPv();
-        });
-        alignRow.appendChild(btn);
-      });
-      inner.appendChild(alignRow);
+      addAlignRow(b);
       break;
     }
 
@@ -768,6 +774,7 @@ function _buildInner(inner, b) {
       var d = makeRichBE(b.content, '摘要内容…');
       wrap.appendChild(d);
       d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
+      addAlignRow(b);
       break;
     }
     case 'authors': {
@@ -998,8 +1005,10 @@ function b2html(b) {
       var items=b.content.split('\n').filter(function(s){return s.trim();}).map(function(s){return '    <li>'+s.trim()+'</li>';}).join('\n');
       return '  <ol>\n'+items+'\n  </ol>';
     }
-    case 'abstract':
-      return '  <div class="abstract-box">\n    <div class="abs-title">摘要</div>\n    <p>'+b.content+'</p>\n  </div>';
+    case 'abstract': {
+      var absstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
+      return '  <div class="abstract-box">\n    <div class="abs-title">摘要</div>\n    <p'+absstyle+'>'+b.content+'</p>\n  </div>';
+    }
     case 'authors': {
       var lines=b.content.split('\n');
       var a=lines[0]||''; var f=lines[1]||'';
@@ -1156,7 +1165,7 @@ function parseHtmlToBlocks(htmlStr) {
     if (tag === 'div') {
       if (el.classList.contains('abstract-box')) {
         var absp = el.querySelector('p');
-        blocks.push(mkBlock('abstract', { content: absp ? absp.innerHTML : '' }));
+        blocks.push(mkBlock('abstract', { content: absp ? absp.innerHTML : '', align: (absp && absp.style.textAlign) || '' }));
         i++; continue;
       }
       if (el.classList.contains('kw-row')) {
@@ -1234,10 +1243,19 @@ function applyCodeToBlocks() {
 function schedPv() { clearTimeout(_pvTimer); _pvTimer=setTimeout(doPv, 380); }
 function doPv() {
   var html=$id('ctarea').value;
-  var blob=new Blob([html],{type:'text/html'});
-  var url=URL.createObjectURL(blob);
-  $id('pframe').src=url;
-  setTimeout(function(){URL.revokeObjectURL(url);},8000);
+  var frame=$id('pframe');
+  var scrollX=0, scrollY=0;
+  try { scrollX=frame.contentWindow.scrollX||0; scrollY=frame.contentWindow.scrollY||0; } catch(e){}
+  var doc=frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document);
+  if (doc) {
+    doc.open(); doc.write(html); doc.close();
+    if (scrollX||scrollY) { try { frame.contentWindow.scrollTo(scrollX,scrollY); } catch(e){} }
+  } else {
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    frame.src=url;
+    setTimeout(function(){URL.revokeObjectURL(url);},8000);
+  }
 }
 $id('ctarea').addEventListener('input', function(){
   $id('cchars').textContent=this.value.length+' chars';
