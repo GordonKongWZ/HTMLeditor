@@ -304,6 +304,35 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   border-radius:var(--r4);background:transparent;font-size:11px;color:var(--t2);cursor:pointer
 }
 .edit-btn:hover{border-color:var(--acm);color:var(--ac)}
+
+/* ── Rich text block ── */
+.rich-be{white-space:normal}
+.rich-be b,.rich-be strong{font-weight:700}
+.rich-be i,.rich-be em{font-style:italic}
+.rich-be u{text-decoration:underline}
+.rich-be s,.rich-be del,.rich-be strike{text-decoration:line-through}
+
+/* ── Floating format bar ── */
+#fmt-bar{
+  position:fixed;display:none;align-items:center;gap:1px;
+  background:#1e2035;border-radius:7px;padding:3px 5px;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:9000;pointer-events:auto;
+  border:1px solid rgba(255,255,255,.08)
+}
+#fmt-bar.vis{display:flex}
+.fmtb{
+  width:26px;height:26px;border:none;background:transparent;color:#cdd6f4;
+  cursor:pointer;border-radius:4px;font-size:12px;line-height:1;
+  display:flex;align-items:center;justify-content:center;font-family:var(--fs);transition:background .1s
+}
+.fmtb:hover,.fmtb.on{background:rgba(255,255,255,.18)}
+.fmtvsep{width:1px;height:14px;background:rgba(255,255,255,.12);margin:0 3px}
+.fmt-clr{
+  width:14px;height:14px;border-radius:3px;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,.25);display:inline-block;transition:transform .1s;flex-shrink:0
+}
+.fmt-clr:hover{transform:scale(1.25);border-color:#fff}
+#fmt-colors{display:flex;gap:3px;align-items:center}
 </style>
 </head>
 <body>
@@ -442,6 +471,23 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   <div class="cxi danger" id="cx-del">✕ 删除</div>
 </div>
 
+<!-- Floating Format Bar (rich-text blocks) -->
+<div id="fmt-bar">
+  <button class="fmtb" id="fmt-b"  title="粗体 (Ctrl+B)"><b>B</b></button>
+  <button class="fmtb" id="fmt-i"  title="斜体 (Ctrl+I)"><i>I</i></button>
+  <button class="fmtb" id="fmt-s"  title="删除线 (Ctrl+S)"><s>S</s></button>
+  <button class="fmtb" id="fmt-u"  title="下划线 (Ctrl+U)" style="text-decoration:underline">U</button>
+  <div class="fmtvsep"></div>
+  <div id="fmt-colors">
+    <span class="fmt-clr" data-c="#e63946" style="background:#e63946" title="红色"></span>
+    <span class="fmt-clr" data-c="#ff9f1c" style="background:#ff9f1c" title="橙色"></span>
+    <span class="fmt-clr" data-c="#2ec4b6" style="background:#2ec4b6" title="青色"></span>
+    <span class="fmt-clr" data-c="#2644ba" style="background:#2644ba" title="蓝色"></span>
+    <span class="fmt-clr" data-c="#6a0572" style="background:#6a0572" title="紫色"></span>
+    <span class="fmt-clr" data-c="" title="清除颜色" style="background:linear-gradient(135deg,#f00 33%,#0c0 66%,#00f)"></span>
+  </div>
+</div>
+
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
   onload="window._katexReady=true"></script>
 
@@ -538,6 +584,35 @@ function makeBE(content, placeholder) {
 }
 
 /* =========================================================
+   BUILD RICH EDITABLE DIV (for p, blockquote, abstract, infobox)
+   Uses innerHTML so inline formatting tags (<strong>, <em>, etc.)
+   are preserved. Ctrl+B/I/S/U apply formatting shortcuts.
+   ========================================================= */
+function makeRichBE(content, placeholder) {
+  var d = document.createElement('div');
+  d.className = 'be rich-be';
+  d.contentEditable = 'true';
+  d.dataset.ph = placeholder || '';
+  if (content) d.innerHTML = content;
+  d.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.execCommand('insertLineBreak', false, null);
+    }
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'b': e.preventDefault(); document.execCommand('bold',         false, null); break;
+        case 'i': e.preventDefault(); document.execCommand('italic',       false, null); break;
+        case 's': e.preventDefault(); e.stopPropagation();
+                  document.execCommand('strikeThrough', false, null); break;
+        case 'u': e.preventDefault(); document.execCommand('underline',    false, null); break;
+      }
+    }
+  });
+  return d;
+}
+
+/* =========================================================
    INSERT BLOCK — ONLY APPENDS, never re-renders
    ========================================================= */
 function insertBlock(type, data) {
@@ -616,20 +691,27 @@ function _buildInner(inner, b) {
     return d;
   }
 
+  function addRichBE(content, placeholder, onChange) {
+    var d = makeRichBE(content, placeholder);
+    inner.appendChild(d);
+    d.addEventListener('input', function() { onChange(d.innerHTML); syncCode(); schedPv(); });
+    return d;
+  }
+
   switch (b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
       addBE(b.content, '输入标题…', function(v){ b.content=v; });
       break;
 
     case 'p':
-      addBE(b.content, '输入段落文字…', function(v){ b.content=v; });
+      addRichBE(b.content, '输入段落文字…', function(v){ b.content=v; });
       break;
 
     case 'blockquote': {
       var wrap = mkDiv('bqx'); inner.appendChild(wrap);
-      var d = makeBE(b.content, '引用文字…');
+      var d = makeRichBE(b.content, '引用文字…');
       wrap.appendChild(d);
-      d.addEventListener('input', function(){ b.content=d.innerText; syncCode(); schedPv(); });
+      d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
       break;
     }
     case 'ul': case 'ol': {
@@ -642,9 +724,9 @@ function _buildInner(inner, b) {
     case 'abstract': {
       var wrap = mkDiv('abx'); inner.appendChild(wrap);
       var tit = mkDiv('abxtit'); tit.textContent='Abstract / 摘要'; wrap.appendChild(tit);
-      var d = makeBE(b.content, '摘要内容…');
+      var d = makeRichBE(b.content, '摘要内容…');
       wrap.appendChild(d);
-      d.addEventListener('input', function(){ b.content=d.innerText; syncCode(); schedPv(); });
+      d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
       break;
     }
     case 'authors': {
@@ -672,9 +754,9 @@ function _buildInner(inner, b) {
       wrap.style.background=c.bg; wrap.style.border='.5px solid '+c.bd;
       var tit = mkDiv('ibxtit'); tit.style.color=c.tc;
       tit.textContent = b.data.ibTitle || '提示'; wrap.appendChild(tit);
-      var d = makeBE(b.content, '内容…'); d.style.color=c.tc; wrap.appendChild(d);
+      var d = makeRichBE(b.content, '内容…'); d.style.color=c.tc; wrap.appendChild(d);
       inner.appendChild(wrap);
-      d.addEventListener('input', function(){ b.content=d.innerText; syncCode(); schedPv(); });
+      d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
       addEditBtn('修改信息框', openInfoboxDialog);
       break;
     }
@@ -984,14 +1066,14 @@ function parseHtmlToBlocks(htmlStr) {
         blocks.push(mkBlock('eq-inline', { raw: txt.slice(1, -1) }));
         i++; continue;
       }
-      blocks.push(mkBlock('p', { content: el.textContent }));
+      blocks.push(mkBlock('p', { content: el.innerHTML }));
       i++; continue;
     }
 
     // Blockquote
     if (tag === 'blockquote') {
       var bqp = el.querySelector('p');
-      blocks.push(mkBlock('blockquote', { content: bqp ? bqp.textContent : el.textContent }));
+      blocks.push(mkBlock('blockquote', { content: bqp ? bqp.innerHTML : el.innerHTML }));
       i++; continue;
     }
 
@@ -1030,7 +1112,7 @@ function parseHtmlToBlocks(htmlStr) {
     if (tag === 'div') {
       if (el.classList.contains('abstract-box')) {
         var absp = el.querySelector('p');
-        blocks.push(mkBlock('abstract', { content: absp ? absp.textContent : '' }));
+        blocks.push(mkBlock('abstract', { content: absp ? absp.innerHTML : '' }));
         i++; continue;
       }
       if (el.classList.contains('kw-row')) {
@@ -1044,7 +1126,7 @@ function parseHtmlToBlocks(htmlStr) {
         Object.keys(typeMap).forEach(function(cls) { if (el.classList.contains(cls)) ibType = typeMap[cls]; });
         var ibt = el.querySelector('.bt');
         var ibp = el.querySelector('p');
-        blocks.push(mkBlock('infobox', { ibType: ibType, ibTitle: ibt ? ibt.textContent.trim() : '提示', content: ibp ? ibp.textContent : '' }));
+        blocks.push(mkBlock('infobox', { ibType: ibType, ibTitle: ibt ? ibt.textContent.trim() : '提示', content: ibp ? ibp.innerHTML : '' }));
         i++; continue;
       }
       if (el.classList.contains('eq')) {
@@ -1391,6 +1473,107 @@ $id('btn-clear').addEventListener('click',function(){
     sy=e.clientY;
   });
   document.addEventListener('mouseup',function(){dragging=false;document.body.style.cursor='';document.body.style.userSelect='';});
+})();
+
+/* =========================================================
+   FORMAT BAR
+   ========================================================= */
+(function(){
+  var bar = $id('fmt-bar');
+  var _savedRange = null;
+  var _hideFmtTimer = null;
+
+  // Prevent focus loss when clicking format buttons (keep selection in rich-be)
+  bar.addEventListener('mousedown', function(e) {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) _savedRange = sel.getRangeAt(0).cloneRange();
+    e.preventDefault(); // don't move focus away from the contentEditable
+  });
+
+  function restoreSel() {
+    if (_savedRange) {
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(_savedRange);
+    }
+  }
+
+  // Trigger syncCode after execCommand (execCommand fires 'input' in most browsers,
+  // but dispatch manually to be safe after we restore selection)
+  function afterFormat() {
+    var el = document.activeElement;
+    while (el && el !== document.body) {
+      if (el.classList && el.classList.contains('rich-be')) {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        break;
+      }
+      el = el.parentNode;
+    }
+  }
+
+  $id('fmt-b').addEventListener('click', function() { restoreSel(); document.execCommand('bold',         false, null); afterFormat(); });
+  $id('fmt-i').addEventListener('click', function() { restoreSel(); document.execCommand('italic',       false, null); afterFormat(); });
+  $id('fmt-s').addEventListener('click', function() { restoreSel(); document.execCommand('strikeThrough',false, null); afterFormat(); });
+  $id('fmt-u').addEventListener('click', function() { restoreSel(); document.execCommand('underline',    false, null); afterFormat(); });
+
+  document.querySelectorAll('.fmt-clr').forEach(function(sw) {
+    sw.addEventListener('click', function() {
+      restoreSel();
+      var c = sw.dataset.c;
+      if (c) {
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('foreColor', false, c);
+        document.execCommand('styleWithCSS', false, false);
+      } else {
+        // Empty data-c = clear color
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('foreColor', false, 'inherit');
+        document.execCommand('removeFormat', false, null);
+        document.execCommand('styleWithCSS', false, false);
+      }
+      afterFormat();
+    });
+  });
+
+  function nodeInRichBE(node) {
+    while (node && node !== document.body) {
+      if (node.classList && node.classList.contains('rich-be')) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  document.addEventListener('selectionchange', function() {
+    clearTimeout(_hideFmtTimer);
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+      _hideFmtTimer = setTimeout(function() { bar.classList.remove('vis'); }, 120);
+      return;
+    }
+    var rb = nodeInRichBE(sel.anchorNode);
+    if (!rb) { _hideFmtTimer = setTimeout(function() { bar.classList.remove('vis'); }, 120); return; }
+
+    var range = sel.getRangeAt(0);
+    var rect = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) { bar.classList.remove('vis'); return; }
+
+    bar.classList.add('vis');
+    var bw = bar.offsetWidth || 200;
+    var bh = bar.offsetHeight || 34;
+    var left = Math.max(4, Math.min(rect.left + rect.width / 2 - bw / 2, window.innerWidth - bw - 4));
+    var top  = rect.top - bh - 8;
+    if (top < 4) top = rect.bottom + 8;
+    bar.style.left = left + 'px';
+    bar.style.top  = top  + 'px';
+
+    // Reflect active state of format commands
+    try {
+      $id('fmt-b').classList.toggle('on', document.queryCommandState('bold'));
+      $id('fmt-i').classList.toggle('on', document.queryCommandState('italic'));
+      $id('fmt-s').classList.toggle('on', document.queryCommandState('strikeThrough'));
+      $id('fmt-u').classList.toggle('on', document.queryCommandState('underline'));
+    } catch(e) {}
+  });
 })();
 
 /* =========================================================
