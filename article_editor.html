@@ -525,6 +525,7 @@ var _pvTimer = null;
 var _idSeq   = 0;
 var _editingBlock = null;
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
+var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -916,6 +917,7 @@ function setSelected(id) {
   if (_sel) { var p=$id(_sel); if(p) p.classList.remove('sel'); }
   _sel = id;
   if (id) { var el=$id(id); if(el) el.classList.add('sel'); }
+  if (id) { _pendingScrollBid = id; scrollPreviewToBlock(id); }
 }
 
 /* =========================================================
@@ -987,62 +989,63 @@ function syncCode() {
 }
 
 function b2html(b) {
+  var bid = ' data-bid="'+b.id+'"';
   switch(b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
-      return '  <'+b.type+'>'+b.content+'</'+b.type+'>';
+      return '  <'+b.type+bid+'>'+b.content+'</'+b.type+'>';
     case 'p':
     case 'p': {
       var pstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
-      return '  <p'+pstyle+'>'+b.content+'</p>';
+      return '  <p'+bid+pstyle+'>'+b.content+'</p>';
     }
     case 'blockquote':
-      return '  <blockquote>\n    <p>'+b.content+'</p>\n  </blockquote>';
+      return '  <blockquote'+bid+'>\n    <p>'+b.content+'</p>\n  </blockquote>';
     case 'ul': {
       var items=b.content.split('\n').filter(function(s){return s.trim();}).map(function(s){return '    <li>'+s.trim()+'</li>';}).join('\n');
-      return '  <ul>\n'+items+'\n  </ul>';
+      return '  <ul'+bid+'>\n'+items+'\n  </ul>';
     }
     case 'ol': {
       var items=b.content.split('\n').filter(function(s){return s.trim();}).map(function(s){return '    <li>'+s.trim()+'</li>';}).join('\n');
-      return '  <ol>\n'+items+'\n  </ol>';
+      return '  <ol'+bid+'>\n'+items+'\n  </ol>';
     }
     case 'abstract': {
       var absstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
-      return '  <div class="abstract-box">\n    <div class="abs-title">摘要</div>\n    <p'+absstyle+'>'+b.content+'</p>\n  </div>';
+      return '  <div class="abstract-box"'+bid+'>\n    <div class="abs-title">摘要</div>\n    <p'+absstyle+'>'+b.content+'</p>\n  </div>';
     }
     case 'authors': {
       var lines=b.content.split('\n');
       var a=lines[0]||''; var f=lines[1]||'';
-      return '  <p class="paper-authors">'+a+'</p>'+(f?'\n  <p class="paper-affil">'+f+'</p>':'');
+      return '  <p class="paper-authors"'+bid+'>'+a+'</p>'+(f?'\n  <p class="paper-affil">'+f+'</p>':'');
     }
     case 'keywords': {
       var kws=b.content.split(',').map(function(k){return k.trim();}).filter(Boolean);
-      return '  <div class="kw-row">\n'+kws.map(function(k){return '    <span class="kw">'+k+'</span>';}).join('\n')+'\n  </div>';
+      return '  <div class="kw-row"'+bid+'>\n'+kws.map(function(k){return '    <span class="kw">'+k+'</span>';}).join('\n')+'\n  </div>';
     }
     case 'infobox': {
       var m={info:'b-info',ok:'b-ok',warn:'b-warn',error:'b-err',note:'b-note'};
       var cls=m[b.data.ibType||'info']||'b-info';
-      return '  <div class="ib '+cls+'">\n    <div class="bt">'+(b.data.ibTitle||'提示')+'</div>\n    <p>'+b.content+'</p>\n  </div>';
+      return '  <div class="ib '+cls+'"'+bid+'>\n    <div class="bt">'+(b.data.ibTitle||'提示')+'</div>\n    <p>'+b.content+'</p>\n  </div>';
     }
     case 'eq': {
       var lbl=b.data.label?' data-eqlabel="'+b.data.label+'"':'';
-      return '  <div class="eq"'+lbl+'>\n    $$'+(b.data.raw||'')+'$$\n  </div>';
+      return '  <div class="eq"'+bid+lbl+'>\n    $$'+(b.data.raw||'')+'$$\n  </div>';
     }
     case 'eq-inline':
-      return '  <p>$'+(b.data.raw||'')+'$</p>';
+      return '  <p'+bid+'>$'+(b.data.raw||'')+'$</p>';
     case 'img': {
       var d=b.data; var src=d.src||''; var alt=d.alt||''; var cap=d.caption||''; var fn=d.fignum||'';
-      return '  <figure class="af">\n    <div class="iw">\n      <div class="img-body">\n        <img src="'+src+'" alt="'+alt+'" loading="lazy">\n      </div>\n      <figcaption>'+(fn?'<span>'+fn+'</span>：':'')+cap+'</figcaption>\n    </div>\n  </figure>';
+      return '  <figure class="af"'+bid+'>\n    <div class="iw">\n      <div class="img-body">\n        <img src="'+src+'" alt="'+alt+'" loading="lazy">\n      </div>\n      <figcaption>'+(fn?'<span>'+fn+'</span>：':'')+cap+'</figcaption>\n    </div>\n  </figure>';
     }
     case 'video': {
       var d=b.data; var src=d.src||''; var cap=d.caption||''; var fn=d.fignum||'';
       var media=d.vtype==='iframe'
         ?'      <iframe src="'+src+'" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"></iframe>'
         :'      <video controls>\n        <source src="'+src+'" type="video/mp4">\n        您的浏览器不支持 video 标签。\n      </video>';
-      return '  <figure class="vw">\n    <div class="vbox">\n'+media+'\n    </div>\n    <figcaption>'+(fn?'<span>'+fn+'</span>：':'')+cap+'</figcaption>\n  </figure>';
+      return '  <figure class="vw"'+bid+'>\n    <div class="vbox">\n'+media+'\n    </div>\n    <figcaption>'+(fn?'<span>'+fn+'</span>：':'')+cap+'</figcaption>\n  </figure>';
     }
     case 'table': {
       var d=b.data; var h=d.headers||[]; var r=d.rows||[]; var cap=d.caption||''; var tn=d.tablenum||'';
-      var s='  <div class="tw">\n';
+      var s='  <div class="tw"'+bid+'>\n';
       if(cap) s+='    <p class="tc">'+(tn?'<span>'+tn+'</span>：':'')+cap+'</p>\n';
       s+='    <div class="t-scroll">\n    <table class="at">\n      <thead>\n        <tr>'+h.map(function(hh){return'<th>'+hh+'</th>';}).join('')+'</tr>\n      </thead>\n      <tbody>\n';
       r.forEach(function(row){ s+='        <tr>'+h.map(function(_,i){return'<td>'+(row[i]||'')+'</td>';}).join('')+'</tr>\n'; });
@@ -1050,13 +1053,13 @@ function b2html(b) {
       return s;
     }
     case 'codeblock':
-      return '  <div class="cbw">\n    <div class="ch"><span class="cl">'+(b.data.lang||'code')+'</span></div>\n    <pre><code>'+b.content+'</code></pre>\n  </div>';
+      return '  <div class="cbw"'+bid+'>\n    <div class="ch"><span class="cl">'+(b.data.lang||'code')+'</span></div>\n    <pre><code>'+b.content+'</code></pre>\n  </div>';
     case 'refs': {
       var items=b.content.split('\n').filter(function(s){return s.trim();}).map(function(s){return'      <li>'+s.trim()+'</li>';}).join('\n');
-      return '  <div class="refs">\n    <h2>参考文献</h2>\n    <ol>\n'+items+'\n    </ol>\n  </div>';
+      return '  <div class="refs"'+bid+'>\n    <h2>参考文献</h2>\n    <ol>\n'+items+'\n    </ol>\n  </div>';
     }
     case 'divider':
-      return '  <hr style="border:none;border-top:0.5px solid var(--color-border-tertiary);margin:2rem 0;">';
+      return '  <hr'+bid+' style="border:none;border-top:0.5px solid var(--color-border-tertiary);margin:2rem 0;">';
     default:
       return '  <!-- '+b.type+' -->';
   }
@@ -1244,12 +1247,20 @@ function schedPv() { clearTimeout(_pvTimer); _pvTimer=setTimeout(doPv, 380); }
 function doPv() {
   var html=$id('ctarea').value;
   var frame=$id('pframe');
+  var pendingBid = _pendingScrollBid;
+  _pendingScrollBid = null;
   var scrollX=0, scrollY=0;
-  try { scrollX=frame.contentWindow.scrollX||0; scrollY=frame.contentWindow.scrollY||0; } catch(e){}
+  if (!pendingBid) {
+    try { scrollX=frame.contentWindow.scrollX||0; scrollY=frame.contentWindow.scrollY||0; } catch(e){}
+  }
   var doc=frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document);
   if (doc) {
     doc.open(); doc.write(html); doc.close();
-    if (scrollX||scrollY) { try { frame.contentWindow.scrollTo(scrollX,scrollY); } catch(e){} }
+    if (pendingBid) {
+      setTimeout(function(){ scrollPreviewToBlock(pendingBid); }, 50);
+    } else if (scrollX||scrollY) {
+      try { frame.contentWindow.scrollTo(scrollX,scrollY); } catch(e){}
+    }
   } else {
     var blob=new Blob([html],{type:'text/html'});
     var url=URL.createObjectURL(blob);
@@ -1262,6 +1273,22 @@ $id('ctarea').addEventListener('input', function(){
   schedPv();
   schedApplyCode(); // sync code edits back to UI block editor
 });
+
+function scrollPreviewToBlock(bid) {
+  if (!bid) return;
+  var frame = $id('pframe');
+  try {
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    if (!doc || !doc.body) return;
+    var el = doc.querySelector('[data-bid="' + bid + '"]');
+    if (!el) return;
+    var fh = frame.contentWindow.innerHeight || frame.clientHeight;
+    var top = 0, node = el;
+    while (node && node !== doc.body) { top += node.offsetTop || 0; node = node.offsetParent; }
+    var dest = top - fh / 2 + el.offsetHeight / 2;
+    frame.contentWindow.scrollTo({ top: Math.max(0, dest), behavior: 'smooth' });
+  } catch(e) {}
+}
 
 /* =========================================================
    DEVICE / SCALE
