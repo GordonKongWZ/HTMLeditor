@@ -335,6 +335,22 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #fmt-colors{display:flex;gap:3px;align-items:center}
 .fmtb-u{text-decoration:underline}
 .fmt-clr-clear{background:linear-gradient(135deg,#f00 33%,#0c0 66%,#00f)}
+
+/* ── Preview responsive full-height ── */
+#pouter.pv-resp{align-items:stretch}
+#pouter.pv-resp #pfwrap{height:100%}
+#pouter.pv-resp #pframe{min-height:0;height:100%}
+
+/* ── Paragraph alignment row ── */
+.align-row{display:flex;gap:2px;margin-top:5px;padding-top:4px;border-top:.5px solid var(--bl)}
+.abtn{
+  display:flex;align-items:center;justify-content:center;gap:2px;padding:2px 6px;
+  border:1px solid var(--bm);border-radius:var(--r4);background:transparent;
+  color:var(--t2);cursor:pointer;font-size:10px;line-height:1;transition:all .1s
+}
+.abtn svg{width:11px;height:11px;flex-shrink:0}
+.abtn:hover{background:var(--acl);color:var(--ac);border-color:var(--acb)}
+.abtn.on{background:var(--ac);color:#fff;border-color:var(--acd)}
 </style>
 </head>
 <body>
@@ -705,9 +721,32 @@ function _buildInner(inner, b) {
       addBE(b.content, '输入标题…', function(v){ b.content=v; });
       break;
 
-    case 'p':
+    case 'p': {
       addRichBE(b.content, '输入段落文字…', function(v){ b.content=v; });
+      var alignRow = mkDiv('align-row');
+      var ALIGNS = [
+        { v:'left',    label:'左对齐',   svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="0" y1="5" x2="8" y2="5"/><line x1="0" y1="8" x2="10" y2="8"/></svg>' },
+        { v:'center',  label:'居中',     svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="2" y1="5" x2="10" y2="5"/><line x1="1" y1="8" x2="11" y2="8"/></svg>' },
+        { v:'right',   label:'右对齐',   svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="4" y1="5" x2="12" y2="5"/><line x1="2" y1="8" x2="12" y2="8"/></svg>' },
+        { v:'justify', label:'两端对齐', svg:'<svg viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="2" x2="12" y2="2"/><line x1="0" y1="5" x2="12" y2="5"/><line x1="0" y1="8" x2="12" y2="8"/></svg>' },
+      ];
+      ALIGNS.forEach(function(a) {
+        var btn = document.createElement('button');
+        btn.className = 'abtn' + (b.data.align === a.v ? ' on' : '');
+        btn.innerHTML = a.svg + a.label;
+        btn.title = a.label;
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          b.data.align = (b.data.align === a.v) ? '' : a.v;
+          alignRow.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
+          if (b.data.align) btn.classList.add('on');
+          syncCode(); schedPv();
+        });
+        alignRow.appendChild(btn);
+      });
+      inner.appendChild(alignRow);
       break;
+    }
 
     case 'blockquote': {
       var wrap = mkDiv('bqx'); inner.appendChild(wrap);
@@ -945,7 +984,10 @@ function b2html(b) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
       return '  <'+b.type+'>'+b.content+'</'+b.type+'>';
     case 'p':
-      return '  <p>'+b.content+'</p>';
+    case 'p': {
+      var pstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
+      return '  <p'+pstyle+'>'+b.content+'</p>';
+    }
     case 'blockquote':
       return '  <blockquote>\n    <p>'+b.content+'</p>\n  </blockquote>';
     case 'ul': {
@@ -1068,7 +1110,7 @@ function parseHtmlToBlocks(htmlStr) {
         blocks.push(mkBlock('eq-inline', { raw: txt.slice(1, -1) }));
         i++; continue;
       }
-      blocks.push(mkBlock('p', { content: el.innerHTML }));
+      blocks.push(mkBlock('p', { content: el.innerHTML, align: el.style.textAlign || '' }));
       i++; continue;
     }
 
@@ -1214,11 +1256,17 @@ document.querySelectorAll('.dbtn').forEach(function(btn){
     var cw=$id('cw'), ch=$id('ch'), cx=$id('cdx');
     var wrap=$id('pfwrap'), frame=$id('pframe');
     if (w==='custom') {
+      $id('pouter').classList.remove('pv-resp');
       cw.style.display=ch.style.display=cx.style.display='inline-block'; applyCustom();
     } else {
       cw.style.display=ch.style.display=cx.style.display='none';
-      if (w==='100%') { wrap.style.width='100%'; frame.style.height='100%'; frame.style.minHeight='400px'; }
-      else { wrap.style.width=w; frame.style.height='820px'; frame.style.minHeight=''; }
+      if (w==='100%') {
+        $id('pouter').classList.add('pv-resp');
+        wrap.style.width='100%'; frame.style.height=''; frame.style.minHeight='';
+      } else {
+        $id('pouter').classList.remove('pv-resp');
+        wrap.style.width=w; frame.style.height='820px'; frame.style.minHeight='';
+      }
       applyScale();
     }
   });
