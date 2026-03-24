@@ -1287,6 +1287,16 @@ function scrollPreviewToBlock(bid) {
     while (node && node !== doc.body) { top += node.offsetTop || 0; node = node.offsetParent; }
     var dest = top - fh / 2 + el.offsetHeight / 2;
     frame.contentWindow.scrollTo({ top: Math.max(0, dest), behavior: 'smooth' });
+    if (!doc.getElementById('_pv_hl_style')) {
+      var s = doc.createElement('style');
+      s.id = '_pv_hl_style';
+      s.textContent = '@keyframes _pv_hl{0%,60%{outline:3px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:3px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}';
+      (doc.head || doc.body).appendChild(s);
+    }
+    var prev = doc.querySelector('._pv_hl');
+    if (prev) { prev.classList.remove('_pv_hl'); void prev.offsetWidth; } // force reflow to reset animation
+    void el.offsetWidth; // force reflow so animation restarts if same element re-selected
+    el.classList.add('_pv_hl');
   } catch(e) {}
 }
 
