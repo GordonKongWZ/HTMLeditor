@@ -333,6 +333,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 .fmt-clr:hover{transform:scale(1.25);border-color:#fff}
 #fmt-colors{display:flex;gap:3px;align-items:center}
+.fmtb-u{text-decoration:underline}
+.fmt-clr-clear{background:linear-gradient(135deg,#f00 33%,#0c0 66%,#00f)}
 </style>
 </head>
 <body>
@@ -476,7 +478,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   <button class="fmtb" id="fmt-b"  title="粗体 (Ctrl+B)"><b>B</b></button>
   <button class="fmtb" id="fmt-i"  title="斜体 (Ctrl+I)"><i>I</i></button>
   <button class="fmtb" id="fmt-s"  title="删除线 (Ctrl+S)"><s>S</s></button>
-  <button class="fmtb" id="fmt-u"  title="下划线 (Ctrl+U)" style="text-decoration:underline">U</button>
+  <button class="fmtb fmtb-u" id="fmt-u"  title="下划线 (Ctrl+U)">U</button>
   <div class="fmtvsep"></div>
   <div id="fmt-colors">
     <span class="fmt-clr" data-c="#e63946" style="background:#e63946" title="红色"></span>
@@ -484,7 +486,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
     <span class="fmt-clr" data-c="#2ec4b6" style="background:#2ec4b6" title="青色"></span>
     <span class="fmt-clr" data-c="#2644ba" style="background:#2644ba" title="蓝色"></span>
     <span class="fmt-clr" data-c="#6a0572" style="background:#6a0572" title="紫色"></span>
-    <span class="fmt-clr" data-c="" title="清除颜色" style="background:linear-gradient(135deg,#f00 33%,#0c0 66%,#00f)"></span>
+    <span class="fmt-clr fmt-clr-clear" data-c="" title="清除颜色"></span>
   </div>
 </div>
 
@@ -603,7 +605,7 @@ function makeRichBE(content, placeholder) {
       switch (e.key.toLowerCase()) {
         case 'b': e.preventDefault(); document.execCommand('bold',         false, null); break;
         case 'i': e.preventDefault(); document.execCommand('italic',       false, null); break;
-        case 's': e.preventDefault(); e.stopPropagation();
+        case 's': e.preventDefault(); e.stopPropagation(); // stop browser save shortcut
                   document.execCommand('strikeThrough', false, null); break;
         case 'u': e.preventDefault(); document.execCommand('underline',    false, null); break;
       }
@@ -1525,10 +1527,9 @@ $id('btn-clear').addEventListener('click',function(){
         document.execCommand('foreColor', false, c);
         document.execCommand('styleWithCSS', false, false);
       } else {
-        // Empty data-c = clear color
+        // Empty data-c = clear color only (don't remove other formatting)
         document.execCommand('styleWithCSS', false, true);
         document.execCommand('foreColor', false, 'inherit');
-        document.execCommand('removeFormat', false, null);
         document.execCommand('styleWithCSS', false, false);
       }
       afterFormat();
@@ -1572,7 +1573,7 @@ $id('btn-clear').addEventListener('click',function(){
       $id('fmt-i').classList.toggle('on', document.queryCommandState('italic'));
       $id('fmt-s').classList.toggle('on', document.queryCommandState('strikeThrough'));
       $id('fmt-u').classList.toggle('on', document.queryCommandState('underline'));
-    } catch(e) {}
+    } catch(e) { /* queryCommandState may throw in sandboxed contexts; safe to ignore */ }
   });
 })();
 
