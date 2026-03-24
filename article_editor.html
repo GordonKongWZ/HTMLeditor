@@ -460,6 +460,7 @@ var _eqMode  = 'block';
 var _pvTimer = null;
 var _idSeq   = 0;
 var _editingBlock = null;
+var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -848,6 +849,7 @@ function _updateCount() {
    CODE SYNC  blocks → textarea
    ========================================================= */
 function syncCode() {
+  if (_syncingFromCode) return; // code is driving; don't overwrite textarea
   var body = _blocks.map(b2html).join('\n\n');
   var full = wrapHTML(body);
   $id('ctarea').value = full;
@@ -930,6 +932,186 @@ function wrapHTML(body) {
 }
 
 /* =========================================================
+   CODE → BLOCKS SYNC  (parse textarea HTML → rebuild _blocks + DOM)
+   ========================================================= */
+function parseHtmlToBlocks(htmlStr) {
+  if (!htmlStr || !htmlStr.trim()) return [];
+  var doc;
+  try { doc = new DOMParser().parseFromString(htmlStr, 'text/html'); } catch(e) { return null; }
+  var ar = doc.querySelector('.ar');
+  if (!ar) return null;
+  var children = Array.prototype.slice.call(ar.children);
+  var blocks = [];
+  var i = 0;
+  while (i < children.length) {
+    var el = children[i];
+    var tag = el.tagName.toLowerCase();
+
+    // Divider
+    if (tag === 'hr') {
+      blocks.push(mkBlock('divider', {}));
+      i++; continue;
+    }
+
+    // Headings h1-h5
+    if (/^h[1-5]$/.test(tag)) {
+      blocks.push(mkBlock(tag, { content: el.textContent }));
+      i++; continue;
+    }
+
+    // Paragraph – several subtypes
+    if (tag === 'p') {
+      if (el.classList.contains('paper-authors')) {
+        var authContent = el.textContent;
+        if (i + 1 < children.length && children[i + 1].classList.contains('paper-affil')) {
+          authContent += '\n' + children[i + 1].textContent;
+          i++;
+        }
+        blocks.push(mkBlock('authors', { content: authContent }));
+        i++; continue;
+      }
+      if (el.classList.contains('paper-affil')) { i++; continue; } // consumed above
+      // Inline equation: entire text is $raw$
+      var txt = el.textContent.trim();
+      if (txt.length > 2 && txt[0] === '$' && txt[txt.length - 1] === '$' && txt.indexOf('\n') === -1) {
+        blocks.push(mkBlock('eq-inline', { raw: txt.slice(1, -1) }));
+        i++; continue;
+      }
+      blocks.push(mkBlock('p', { content: el.textContent }));
+      i++; continue;
+    }
+
+    // Blockquote
+    if (tag === 'blockquote') {
+      var bqp = el.querySelector('p');
+      blocks.push(mkBlock('blockquote', { content: bqp ? bqp.textContent : el.textContent }));
+      i++; continue;
+    }
+
+    // Lists
+    if (tag === 'ul') {
+      var uls = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
+      blocks.push(mkBlock('ul', { content: uls.join('\n') }));
+      i++; continue;
+    }
+    if (tag === 'ol') {
+      var ols = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
+      blocks.push(mkBlock('ol', { content: ols.join('\n') }));
+      i++; continue;
+    }
+
+    // Figures – image or video
+    if (tag === 'figure') {
+      if (el.classList.contains('af')) {
+        var img = el.querySelector('img');
+        var figcap = el.querySelector('figcaption');
+        var capText = '', fignum = '';
+        if (figcap) {
+          var fcspan = figcap.querySelector('span');
+          if (fcspan) { fignum = fcspan.textContent.trim(); capText = figcap.textContent.replace(fcspan.textContent, '').replace(/^[：:]\s*/, '').trim(); }
+          else { capText = figcap.textContent.trim(); }
+        }
+        blocks.push(mkBlock('img', { src: img ? (img.getAttribute('src') || '') : '', alt: img ? (img.getAttribute('alt') || '') : '', caption: capText, fignum: fignum }));
+        i++; continue;
+      }
+      if (el.classList.contains('vw')) {
+        var vif = el.querySelector('iframe');
+        var vsrc = el.querySelector('video source');
+        var vfigcap = el.querySelector('figcaption');
+        var vcapText = '', vfignum = '';
+        if (vfigcap) {
+          var vspan = vfigcap.querySelector('span');
+          if (vspan) { vfignum = vspan.textContent.trim(); vcapText = vfigcap.textContent.replace(vspan.textContent, '').replace(/^[：:]\s*/, '').trim(); }
+          else { vcapText = vfigcap.textContent.trim(); }
+        }
+        blocks.push(mkBlock('video', { vtype: vif ? 'iframe' : 'file', src: vif ? (vif.getAttribute('src') || '') : (vsrc ? (vsrc.getAttribute('src') || '') : ''), caption: vcapText, fignum: vfignum }));
+        i++; continue;
+      }
+      i++; continue;
+    }
+
+    // Divs with class-based type detection
+    if (tag === 'div') {
+      if (el.classList.contains('abstract-box')) {
+        var absp = el.querySelector('p');
+        blocks.push(mkBlock('abstract', { content: absp ? absp.textContent : '' }));
+        i++; continue;
+      }
+      if (el.classList.contains('kw-row')) {
+        var kws = Array.prototype.slice.call(el.querySelectorAll('.kw')).map(function(s){ return s.textContent.trim(); });
+        blocks.push(mkBlock('keywords', { content: kws.join(', ') }));
+        i++; continue;
+      }
+      if (el.classList.contains('ib')) {
+        var typeMap = { 'b-info': 'info', 'b-ok': 'ok', 'b-warn': 'warn', 'b-err': 'error', 'b-note': 'note' };
+        var ibType = 'info';
+        Object.keys(typeMap).forEach(function(cls) { if (el.classList.contains(cls)) ibType = typeMap[cls]; });
+        var ibt = el.querySelector('.bt');
+        var ibp = el.querySelector('p');
+        blocks.push(mkBlock('infobox', { ibType: ibType, ibTitle: ibt ? ibt.textContent.trim() : '提示', content: ibp ? ibp.textContent : '' }));
+        i++; continue;
+      }
+      if (el.classList.contains('eq')) {
+        var eqRaw = el.textContent.trim().replace(/^\$\$/, '').replace(/\$\$$/, '').trim();
+        var eqLabel = el.getAttribute('data-eqlabel') || '';
+        blocks.push(mkBlock('eq', { raw: eqRaw, label: eqLabel }));
+        i++; continue;
+      }
+      if (el.classList.contains('tw')) {
+        var tbl = el.querySelector('table');
+        var headers = [], rows = [], caption = '', tablenum = '';
+        var tc = el.querySelector('.tc');
+        if (tc) {
+          var tcspan = tc.querySelector('span');
+          if (tcspan) { tablenum = tcspan.textContent.trim(); caption = tc.textContent.replace(tcspan.textContent, '').replace(/^[：:]\s*/, '').trim(); }
+          else { caption = tc.textContent.trim(); }
+        }
+        if (tbl) {
+          headers = Array.prototype.slice.call(tbl.querySelectorAll('thead th')).map(function(th){ return th.textContent.trim(); });
+          rows = Array.prototype.slice.call(tbl.querySelectorAll('tbody tr')).map(function(tr){
+            return Array.prototype.slice.call(tr.querySelectorAll('td')).map(function(td){ return td.textContent.trim(); });
+          });
+        }
+        blocks.push(mkBlock('table', { headers: headers, rows: rows, caption: caption, tablenum: tablenum }));
+        i++; continue;
+      }
+      if (el.classList.contains('cbw')) {
+        var cbcl = el.querySelector('.cl');
+        var cbcode = el.querySelector('pre code');
+        blocks.push(mkBlock('codeblock', { lang: cbcl ? cbcl.textContent.trim() : 'code', content: cbcode ? cbcode.textContent : '' }));
+        i++; continue;
+      }
+      if (el.classList.contains('refs')) {
+        var refItems = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
+        blocks.push(mkBlock('refs', { content: refItems.join('\n') }));
+        i++; continue;
+      }
+    }
+
+    i++;
+  }
+  return blocks;
+}
+
+var _codeParseTimer = null;
+function schedApplyCode() {
+  clearTimeout(_codeParseTimer);
+  _codeParseTimer = setTimeout(applyCodeToBlocks, 600);
+}
+function applyCodeToBlocks() {
+  var newBlocks = parseHtmlToBlocks($id('ctarea').value);
+  if (!newBlocks) return; // couldn't parse (no .ar wrapper) – leave blocks as-is
+  _syncingFromCode = true;
+  _blocks = newBlocks;
+  _sel = null;
+  var bl = $id('blist');
+  bl.innerHTML = '';
+  _blocks.forEach(function(b) { _appendBlockEl(b); });
+  _updateCount();
+  _syncingFromCode = false;
+}
+
+/* =========================================================
    PREVIEW
    ========================================================= */
 function schedPv() { clearTimeout(_pvTimer); _pvTimer=setTimeout(doPv, 380); }
@@ -943,6 +1125,7 @@ function doPv() {
 $id('ctarea').addEventListener('input', function(){
   $id('cchars').textContent=this.value.length+' chars';
   schedPv();
+  schedApplyCode(); // sync code edits back to UI block editor
 });
 
 /* =========================================================
@@ -1190,6 +1373,7 @@ $id('btn-import').addEventListener('click',function(){
       $id('ctarea').value=ev.target.result;
       $id('cchars').textContent=ev.target.result.length+' chars';
       doPv();
+      applyCodeToBlocks(); // rebuild block list from imported HTML
     }; r.readAsText(f);
   }; inp.click();
 });
