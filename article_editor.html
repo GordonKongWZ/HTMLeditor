@@ -168,18 +168,41 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #rhandle:hover::before{background:var(--acm)}
 
 /* Code editor */
-#cewrap{display:flex;flex-direction:column;overflow:hidden;background:var(--bge);min-height:0;height:200px}
+#cewrap{display:flex;flex-direction:column;overflow:hidden;background:#fff;min-height:0;height:200px}
 #cehead{
-  display:flex;align-items:center;gap:7px;padding:4px 12px;background:#16162a;
-  border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0
+  display:flex;align-items:center;gap:7px;padding:4px 12px;background:#fff;
+  border-bottom:1px solid var(--bl);flex-shrink:0
 }
-#cehead span{font-size:10px;color:rgba(255,255,255,.4);font-family:var(--fm)}
+#cehead>span.celabel{font-size:10px;color:var(--t2);font-family:var(--fm)}
 .dot{width:8px;height:8px;border-radius:50%}
 .dr{background:#ff5f57}.dy{background:#ffbd2e}.dg{background:#28c840}
+#cerawbtn{
+  margin-left:auto;padding:2px 7px;border-radius:var(--r4);border:1px solid var(--bm);
+  background:#fff;font-size:10px;font-family:var(--fm);color:var(--t2);cursor:pointer
+}
+#cerawbtn:hover{background:var(--bg1);color:var(--t0)}
+#ctree{
+  flex:1;background:#fff;overflow:auto;padding:4px 0;
+  font-family:var(--fm);font-size:11.5px;line-height:1.55;min-height:0;white-space:nowrap
+}
+#ctree .tv-empty{padding:8px 14px;color:var(--t2);font-style:italic}
+.tv-wrap{display:block}
+.tvr{display:flex;align-items:baseline;padding:0 8px 0 0;min-height:18px;border-radius:3px}
+.tvr:hover{background:rgba(0,0,0,.04)}
+.tv-tog{
+  width:14px;flex-shrink:0;text-align:center;font-size:8px;
+  color:#999;cursor:pointer;user-select:none;line-height:1.55
+}
+.tv-tog:hover{color:#333}
+.tv-tag{color:#881280}
+.tv-attr{color:#994500}
+.tv-val{color:#1a1a66}
+.tv-txt{color:#1a1a18}
+.tv-cm{color:#aaa}
 #ctarea{
-  flex:1;background:var(--bge);color:#cdd6f4;border:none;outline:none;
+  flex:1;background:#fff;color:var(--t0);border:none;outline:none;
   padding:12px 14px;font-family:var(--fm);font-size:12px;line-height:1.65;
-  resize:none;overflow-y:auto;white-space:pre;tab-size:2;min-height:0
+  resize:none;overflow-y:auto;white-space:pre;tab-size:2;min-height:0;display:none
 }
 
 /* ── Right panel (preview) ── */
@@ -384,10 +407,11 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   <div id="cewrap">
     <div id="cehead">
       <div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div>
-      <span>HTML 代码 · 实时预览</span>
-      <div style="flex:1"></div>
-      <span id="cchars" style="font-size:10px;color:rgba(255,255,255,.2)">0 chars</span>
+      <span class="celabel">HTML 结构 · 实时预览</span>
+      <span id="cchars" style="font-size:10px;color:var(--t2);margin-left:6px">0 chars</span>
+      <button id="cerawbtn">源码</button>
     </div>
+    <div id="ctree"></div>
     <textarea id="ctarea" spellcheck="false" placeholder="<!-- 插入组件后代码将在此显示，可直接编辑 -->"></textarea>
   </div>
 </div>
@@ -852,7 +876,149 @@ function syncCode() {
   var full = wrapHTML(body);
   $id('ctarea').value = full;
   $id('cchars').textContent = full.length + ' chars';
+  renderHTMLTree(full);
 }
+
+/* =========================================================
+   HTML TREE VIEW  (Chrome DevTools style)
+   ========================================================= */
+var _treeRaw = false;
+
+function _tvEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _tvOpenTag(el) {
+  var tag = el.tagName.toLowerCase();
+  var s = '<span class="tv-tag">&lt;' + tag + '</span>';
+  for (var i = 0; i < el.attributes.length; i++) {
+    var a = el.attributes[i];
+    s += ' <span class="tv-attr">' + _tvEsc(a.name) + '</span>';
+    s += '=<span class="tv-val">"' + _tvEsc(a.value) + '"</span>';
+  }
+  s += '<span class="tv-tag">&gt;</span>';
+  return s;
+}
+
+function _tvCloseTag(el) {
+  return '<span class="tv-tag">&lt;/' + el.tagName.toLowerCase() + '&gt;</span>';
+}
+
+function _tvSigChildren(node) {
+  return Array.from(node.childNodes).filter(function(n) {
+    if (n.nodeType === 1) return true;
+    if (n.nodeType === 3) return n.textContent.trim().length > 0;
+    return false;
+  });
+}
+
+var _tvVoid = ['br','hr','img','input','link','meta','area','base','col','embed','param','source','track','wbr'];
+
+function _tvBuildNode(node, depth, defaultCollapsed) {
+  var wrap = document.createElement('div');
+  wrap.className = 'tv-wrap';
+
+  if (node.nodeType === 3) {
+    var txt = node.textContent.trim();
+    if (!txt) return null;
+    var row = document.createElement('div');
+    row.className = 'tvr';
+    row.style.paddingLeft = (depth * 14 + 16) + 'px';
+    row.innerHTML = '<span class="tv-tog"></span><span class="tv-txt">' + _tvEsc(txt.length > 120 ? txt.substring(0,120)+'…' : txt) + '</span>';
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  if (node.nodeType !== 1) return null;
+
+  var children = _tvSigChildren(node);
+  var hasChildren = children.length > 0;
+  var tag = node.tagName.toLowerCase();
+  var isSelfClose = _tvVoid.indexOf(tag) !== -1;
+
+  var row = document.createElement('div');
+  row.className = 'tvr';
+  row.style.paddingLeft = (depth * 14 + 2) + 'px';
+
+  var tog = document.createElement('span');
+  tog.className = 'tv-tog';
+
+  var tagLabel = document.createElement('span');
+  row.appendChild(tog);
+  row.appendChild(tagLabel);
+  wrap.appendChild(row);
+
+  if (!isSelfClose && hasChildren) {
+    var childWrap = document.createElement('div');
+    childWrap.className = 'tv-ch';
+
+    children.forEach(function(child) {
+      var cn = _tvBuildNode(child, depth + 1, true);
+      if (cn) childWrap.appendChild(cn);
+    });
+
+    var closeRow = document.createElement('div');
+    closeRow.className = 'tvr';
+    closeRow.style.paddingLeft = (depth * 14 + 16) + 'px';
+    closeRow.innerHTML = '<span class="tv-tog"></span>' + _tvCloseTag(node);
+    childWrap.appendChild(closeRow);
+
+    function setCollapsed(c) {
+      if (c) {
+        childWrap.style.display = 'none';
+        tog.textContent = '▶';
+        tagLabel.innerHTML = _tvOpenTag(node) + '<span class="tv-cm"> … </span>' + _tvCloseTag(node);
+      } else {
+        childWrap.style.display = '';
+        tog.textContent = '▼';
+        tagLabel.innerHTML = _tvOpenTag(node);
+      }
+    }
+
+    setCollapsed(defaultCollapsed);
+
+    tog.addEventListener('click', function() {
+      setCollapsed(childWrap.style.display !== 'none');
+    });
+
+    wrap.appendChild(childWrap);
+  } else if (!isSelfClose) {
+    tagLabel.innerHTML = _tvOpenTag(node) + _tvCloseTag(node);
+  } else {
+    tagLabel.innerHTML = _tvOpenTag(node);
+  }
+
+  return wrap;
+}
+
+function renderHTMLTree(htmlStr) {
+  var tree = $id('ctree');
+  if (!tree || _treeRaw) return;
+  tree.innerHTML = '';
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(htmlStr, 'text/html');
+  var root = doc.querySelector('.ar') || doc.body;
+  var children = _tvSigChildren(root);
+  if (children.length === 0) {
+    tree.innerHTML = '<div class="tv-empty"><!-- 插入组件后结构将在此显示 --></div>';
+    return;
+  }
+  children.forEach(function(child) {
+    var n = _tvBuildNode(child, 0, true);
+    if (n) tree.appendChild(n);
+  });
+}
+
+function _toggleRawMode() {
+  _treeRaw = !_treeRaw;
+  $id('ctree').style.display = _treeRaw ? 'none' : '';
+  $id('ctarea').style.display = _treeRaw ? '' : 'none';
+  $id('cerawbtn').textContent = _treeRaw ? '树视图' : '源码';
+  if (!_treeRaw) renderHTMLTree($id('ctarea').value);
+}
+
+$id('cerawbtn').addEventListener('click', _toggleRawMode);
+
 
 function b2html(b) {
   switch(b.type) {
