@@ -176,16 +176,16 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #rhandle:hover::before{background:var(--acm)}
 
 /* Code editor */
-#cewrap{display:flex;flex-direction:column;overflow:hidden;background:var(--bge);min-height:0;height:200px}
+#cewrap{display:flex;flex-direction:column;overflow:hidden;background:#fff;min-height:0;height:200px}
 #cehead{
-  display:flex;align-items:center;gap:7px;padding:4px 12px;background:#16162a;
-  border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0
+  display:flex;align-items:center;gap:7px;padding:4px 12px;background:var(--bg1);
+  border-bottom:1px solid var(--bl);flex-shrink:0
 }
-#cehead span{font-size:10px;color:rgba(255,255,255,.4);font-family:var(--fm)}
+#cehead span{font-size:10px;color:var(--t2);font-family:var(--fm)}
 .dot{width:8px;height:8px;border-radius:50%}
 .dr{background:#ff5f57}.dy{background:#ffbd2e}.dg{background:#28c840}
 #ctarea{
-  flex:1;background:var(--bge);color:#cdd6f4;border:none;outline:none;
+  flex:1;background:#fff;color:var(--t0);border:none;outline:none;
   padding:12px 14px;font-family:var(--fm);font-size:12px;line-height:1.65;
   resize:none;overflow-y:auto;white-space:pre;tab-size:2;min-height:0
 }
@@ -361,75 +361,82 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .abtn.on{background:var(--ac);color:#fff;border-color:var(--acd)}
 
 /* ── Code editor tab buttons ── */
-.ce-tab{padding:2px 8px;border:none;background:transparent;color:rgba(255,255,255,.3);font-size:10px;font-family:var(--fm);cursor:pointer;border-radius:var(--r4);transition:all .1s;white-space:nowrap;line-height:1}
-.ce-tab:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
-.ce-tab.act{background:rgba(255,255,255,.14);color:rgba(255,255,255,.88)}
+.ce-tab{padding:2px 8px;border:none;background:transparent;color:var(--t2);font-size:10px;font-family:var(--fm);cursor:pointer;border-radius:var(--r4);transition:all .1s;white-space:nowrap;line-height:1}
+.ce-tab:hover{background:var(--bg2);color:var(--t0)}
+.ce-tab.act{background:var(--bg2);color:var(--t0);font-weight:600}
 
 /* ── Tree view pane ── */
-#ce-tree-pane{flex:1;overflow-y:auto;background:var(--bge);padding:4px 3px;min-height:0}
-.tv-empty{font-size:11px;color:rgba(255,255,255,.2);text-align:center;padding:20px 10px;font-family:var(--fm)}
+#ce-tree-pane{flex:1;overflow-y:auto;background:#fff;padding:4px 3px;min-height:0}
+.tv-empty{font-size:11px;color:var(--t2);text-align:center;padding:20px 10px;font-family:var(--fm)}
 
 /* Tree block node */
 .tn{position:relative;margin-bottom:1px}
 .tn-hdr{display:flex;align-items:center;gap:3px;padding:2px 4px 2px 3px;border-radius:var(--r4);cursor:pointer;min-height:22px;transition:background .08s;user-select:none}
-.tn-hdr:hover{background:rgba(255,255,255,.05)}
-.tn-hdr.tn-sel{background:rgba(38,68,186,.32)!important}
-.tn-hdr.tn-sel:hover{background:rgba(38,68,186,.42)!important}
+.tn-hdr:hover{background:var(--bg1)}
+.tn-hdr.tn-sel{background:var(--acl)!important}
+.tn-hdr.tn-sel:hover{background:var(--acb)!important}
 
 /* Toggle arrow */
-.tn-tog{width:14px;height:14px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.22);font-size:9px;flex-shrink:0;border-radius:2px;transition:color .1s}
+.tn-tog{width:14px;height:14px;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:9px;flex-shrink:0;border-radius:2px;transition:color .1s}
 .tn-tog.clickable{cursor:pointer}
-.tn-tog.clickable:hover{color:#cdd6f4;background:rgba(255,255,255,.1)}
+.tn-tog.clickable:hover{color:var(--t0);background:var(--bg2)}
 
 /* Block type badge */
-.tn-badge{font-size:9px;font-family:var(--fm);padding:1px 4px;border-radius:2px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;line-height:1.4}
+.tn-badge{font-size:9px;font-family:var(--fm);padding:1px 4px;border-radius:2px;background:var(--bg2);color:var(--t1);flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;line-height:1.4}
 
 /* Tag label */
 .tn-tag{font-family:var(--fm);font-size:10px;border-radius:3px;padding:1px 5px;flex-shrink:0;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
-.tt-h{background:rgba(38,68,186,.3);color:#89b4fa}
-.tt-p{background:rgba(100,100,100,.18);color:#cdd6f4}
-.tt-div{background:rgba(120,60,220,.22);color:#cba6f7}
-.tt-fig{background:rgba(30,140,80,.22);color:#a6e3a1}
-.tt-list{background:rgba(200,100,30,.22);color:#fab387}
-.tt-hr{background:rgba(80,80,80,.18);color:#6c7086}
-.tt-def{background:rgba(60,60,60,.18);color:#a6adc8}
+.tt-h{background:rgba(38,68,186,.1);color:#2644ba}
+.tt-p{background:rgba(80,80,80,.08);color:#555}
+.tt-div{background:rgba(120,60,220,.1);color:#6b2fba}
+.tt-fig{background:rgba(30,140,80,.1);color:#0e7a40}
+.tt-list{background:rgba(200,100,30,.1);color:#b05a10}
+.tt-hr{background:rgba(80,80,80,.08);color:#777}
+.tt-def{background:rgba(60,60,60,.08);color:#555}
 
 /* Text preview */
-.tn-txt{font-size:10px;color:rgba(255,255,255,.26);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--fm);min-width:0}
+.tn-txt{font-size:10px;color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--fm);min-width:0}
 
 /* Hover action buttons */
 .tn-acts{display:none;align-items:center;gap:1px;flex-shrink:0;margin-left:2px}
 .tn-hdr:hover .tn-acts{display:flex}
-.tn-act{width:17px;height:17px;border:none;background:transparent;color:rgba(255,255,255,.32);cursor:pointer;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .1s;padding:0;flex-shrink:0}
-.tn-act:hover{background:rgba(255,255,255,.1);color:#cdd6f4}
-.tn-a-del:hover{background:rgba(220,50,50,.22);color:#f38ba8}
-.tn-a-ins:hover{background:rgba(38,180,80,.18);color:#a6e3a1}
-.tn-a-edit:hover{background:rgba(38,68,186,.3);color:#89b4fa}
+.tn-act{width:17px;height:17px;border:none;background:transparent;color:var(--t2);cursor:pointer;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .1s;padding:0;flex-shrink:0}
+.tn-act:hover{background:var(--bg2);color:var(--t0)}
+.tn-a-del:hover{background:rgba(220,50,50,.1);color:#b91c1c}
+.tn-a-ins:hover{background:rgba(30,140,80,.1);color:#0e7a40}
+.tn-a-edit:hover{background:var(--acl);color:var(--ac)}
 
 /* Inner element tree (expanded block children) */
-.tn-children{padding-left:13px;border-left:1px solid rgba(255,255,255,.05);margin-left:12px}
+.tn-children{padding-left:13px;border-left:1px solid var(--bl);margin-left:12px}
 .tn-inner-node{margin-bottom:1px}
 .tn-inode-hdr{display:flex;align-items:center;gap:3px;padding:1px 3px;min-height:17px}
-.tn-inode-tag{font-family:var(--fm);font-size:9px;padding:0 3px;border-radius:2px;background:rgba(255,255,255,.05);color:rgba(205,214,244,.45);flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.45}
-.tn-inode-txt{font-size:9px;color:rgba(255,255,255,.2);font-family:var(--fm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-style:italic}
+.tn-inode-tag{font-family:var(--fm);font-size:9px;padding:0 3px;border-radius:2px;background:var(--bg2);color:var(--t1);flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.45}
+.tn-inode-txt{font-size:9px;color:var(--t2);font-family:var(--fm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-style:italic}
 
 /* Inline HTML editor */
-.tn-edit-wrap{padding:3px 5px 6px;background:rgba(0,0,0,.22);border-radius:0 0 var(--r4) var(--r4);margin-top:1px}
-.tn-edit-wrap textarea{width:100%;box-sizing:border-box;background:#0b0b1e;color:#cdd6f4;border:1px solid rgba(38,68,186,.4);border-radius:var(--r4);padding:6px 8px;font-family:var(--fm);font-size:11px;line-height:1.55;resize:vertical;min-height:72px;max-height:220px;outline:none;tab-size:2;white-space:pre}
-.tn-edit-wrap textarea:focus{border-color:var(--acm);box-shadow:0 0 0 2px rgba(38,68,186,.14)}
+.tn-edit-wrap{padding:3px 5px 6px;background:var(--bg1);border-radius:0 0 var(--r4) var(--r4);margin-top:1px;border-top:1px solid var(--bl)}
+.tn-edit-wrap textarea{width:100%;box-sizing:border-box;background:#fff;color:var(--t0);border:1px solid var(--bm);border-radius:var(--r4);padding:6px 8px;font-family:var(--fm);font-size:11px;line-height:1.55;resize:vertical;min-height:72px;max-height:220px;outline:none;tab-size:2;white-space:pre}
+.tn-edit-wrap textarea:focus{border-color:var(--acm);box-shadow:0 0 0 2px rgba(38,68,186,.1)}
 .tn-edit-btns{display:flex;gap:5px;margin-top:5px}
 .tn-edit-save{padding:3px 11px;border:none;border-radius:var(--r4);background:var(--ac);color:#fff;font-size:11px;font-family:var(--fs);cursor:pointer;transition:background .1s}
 .tn-edit-save:hover{background:var(--acd)}
-.tn-edit-cancel{padding:3px 10px;border:1px solid rgba(255,255,255,.1);border-radius:var(--r4);background:transparent;color:rgba(255,255,255,.38);font-size:11px;font-family:var(--fs);cursor:pointer;transition:all .1s}
-.tn-edit-cancel:hover{border-color:rgba(255,255,255,.22);color:rgba(255,255,255,.65)}
-.tn-edit-info{font-size:10px;margin-top:3px;font-family:var(--fm);color:#f38ba8}
+.tn-edit-cancel{padding:3px 10px;border:1px solid var(--bm);border-radius:var(--r4);background:transparent;color:var(--t1);font-size:11px;font-family:var(--fs);cursor:pointer;transition:all .1s}
+.tn-edit-cancel:hover{border-color:var(--acm);color:var(--t0)}
+.tn-edit-info{font-size:10px;margin-top:3px;font-family:var(--fm);color:#b91c1c}
 
 /* Insert panel */
-.tn-ins-wrap{padding:3px 5px 7px;background:rgba(0,0,0,.2);border-radius:0 0 var(--r4) var(--r4);margin-top:1px}
-.tn-ins-label{font-size:9px;color:rgba(255,255,255,.22);margin-bottom:5px;font-family:var(--fm)}
+.tn-ins-wrap{padding:3px 5px 7px;background:var(--bg1);border-radius:0 0 var(--r4) var(--r4);margin-top:1px;border-top:1px solid var(--bl)}
+.tn-ins-label{font-size:9px;color:var(--t2);margin-bottom:5px;font-family:var(--fm)}
 .tn-ins-btns{display:flex;flex-wrap:wrap;gap:3px}
-.tn-ins-btn{padding:2px 7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:rgba(255,255,255,.45);border-radius:3px;font-size:9px;font-family:var(--fm);cursor:pointer;transition:all .1s}
-.tn-ins-btn:hover{background:rgba(38,68,186,.22);border-color:var(--acm);color:#cdd6f4}
+.tn-ins-btn{padding:2px 7px;border:1px solid var(--bm);background:#fff;color:var(--t1);border-radius:3px;font-size:9px;font-family:var(--fm);cursor:pointer;transition:all .1s}
+.tn-ins-btn:hover{background:var(--acl);border-color:var(--acm);color:var(--ac)}
+
+/* Tree context menu */
+#ctxm-tree{
+  display:none;position:fixed;z-index:2000;background:#fff;border:1px solid var(--bm);
+  border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:140px
+}
+#ctxm-tree.open{display:block}
 </style>
 </head>
 <body>
@@ -514,7 +521,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
       <div style="flex:1"></div>
       <button class="ce-tab act" id="ce-tab-tree" aria-label="树形视图">🌲 树形</button>
       <button class="ce-tab" id="ce-tab-html" aria-label="HTML 视图">◁▷ HTML</button>
-      <span id="cchars" style="font-size:10px;color:rgba(255,255,255,.2);margin-left:6px">0 chars</span>
+      <span id="cchars" style="font-size:10px;color:var(--t2);margin-left:6px">0 chars</span>
     </div>
     <div id="ce-tree-pane"><div class="tv-empty">暂无内容</div></div>
     <textarea id="ctarea" spellcheck="false" style="display:none" placeholder="<!-- 插入组件后代码将在此显示，可直接编辑 -->"></textarea>
@@ -561,7 +568,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   </div>
 </div>
 
-<!-- Context Menu -->
+<!-- Context Menu (editor area) -->
 <div id="ctxm">
   <div class="cxi" id="cx-up">↑ 上移</div>
   <div class="cxi" id="cx-dn">↓ 下移</div>
@@ -569,6 +576,20 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   <div class="cxi" id="cx-dup">⧉ 复制块</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
+</div>
+
+<!-- Context Menu (tree view) -->
+<div id="ctxm-tree">
+  <div class="cxi" id="cxt-edit">✎ 编辑 HTML</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxt-up">↑ 上移</div>
+  <div class="cxi" id="cxt-dn">↓ 下移</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxt-dup">⧉ 复制块</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxt-ins">＋ 在下方插入</div>
+  <div class="cxs"></div>
+  <div class="cxi danger" id="cxt-del">✕ 删除</div>
 </div>
 
 <!-- Floating Format Bar (rich-text blocks) -->
@@ -1527,6 +1548,37 @@ $id('cx-dup').addEventListener('click', function(){duplicateBlock(_ctxId);});
 $id('cx-del').addEventListener('click', function(){deleteBlock(_ctxId);});
 
 /* =========================================================
+   TREE VIEW CONTEXT MENU
+   ========================================================= */
+var _treeCtxId = null, _treeCtxWrap = null;
+function _openTreeCtx(e, id, nodeWrap) {
+  _treeCtxId = id; _treeCtxWrap = nodeWrap;
+  var m = $id('ctxm-tree');
+  var x = e.clientX, y = e.clientY;
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  m.classList.add('open');
+  // keep within viewport
+  requestAnimationFrame(function() {
+    var r = m.getBoundingClientRect();
+    if (r.right > window.innerWidth) m.style.left = (x - r.width) + 'px';
+    if (r.bottom > window.innerHeight) m.style.top = (y - r.height) + 'px';
+  });
+}
+document.addEventListener('click', function(){ $id('ctxm-tree').classList.remove('open'); });
+$id('cxt-edit').addEventListener('click', function() {
+  if (_treeCtxWrap) _toggleTreeEdit(_treeCtxId, _treeCtxWrap);
+});
+$id('cxt-up').addEventListener('click', function(){ moveBlock(_treeCtxId, -1); });
+$id('cxt-dn').addEventListener('click', function(){ moveBlock(_treeCtxId,  1); });
+$id('cxt-dup').addEventListener('click', function(){ duplicateBlock(_treeCtxId); });
+$id('cxt-ins').addEventListener('click', function() {
+  if (_treeCtxWrap) _toggleTreeInsert(_treeCtxId, _treeCtxWrap);
+});
+$id('cxt-del').addEventListener('click', function(){
+  if (confirm('确定删除此块？')) deleteBlock(_treeCtxId);
+});
+
+/* =========================================================
    DIALOGS
    ========================================================= */
 function openDlg(title, html, type) {
@@ -1929,9 +1981,11 @@ function _buildTreeNode(b) {
   hdr.appendChild(acts);
 
   /* Click header → select block */
-  (function(bid, h) {
+  (function(bid, h, nodeWrap) {
     h.addEventListener('click', function() { setSelected(bid); });
-  })(b.id, hdr);
+    h.addEventListener('dblclick', function(e) { e.stopPropagation(); _toggleTreeEdit(bid, nodeWrap); });
+    h.addEventListener('contextmenu', function(e) { e.preventDefault(); _openTreeCtx(e, bid, nodeWrap); });
+  })(b.id, hdr, wrap);
 
   wrap.appendChild(hdr);
 
