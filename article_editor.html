@@ -849,11 +849,258 @@ function makeBE(content, placeholder) {
 }
 
 /* =========================================================
+   RICH TEXT PASTE / SPLIT UTILITIES
+   ========================================================= */
+
+/* Recursively process a DOM node, keeping only allowed inline formatting.
+   Allowed output tags: <strong> <em> <u> <s> <a href>
+   Style-based formatting (span with font-weight/style/decoration) is also detected. */
+function _cleanInlineNode(node) {
+  if (node.nodeType === 3) {
+    return esc(node.textContent);
+  }
+  if (node.nodeType !== 1) return '';
+  var tag = node.tagName.toLowerCase();
+  var children = Array.prototype.slice.call(node.childNodes).map(_cleanInlineNode).join('');
+  if (tag === 'strong' || tag === 'b') return '<strong>' + children + '</strong>';
+  if (tag === 'em'     || tag === 'i') return '<em>'     + children + '</em>';
+  if (tag === 'u')                     return '<u>'      + children + '</u>';
+  if (tag === 's' || tag === 'del' || tag === 'strike') return '<s>' + children + '</s>';
+  if (tag === 'a') {
+    var href = (node.getAttribute('href') || '').trim();
+    if (href && !/^javascript:/i.test(href)) return '<a href="' + href.replace(/"/g,'&quot;') + '">' + children + '</a>';
+    return children;
+  }
+  /* Detect style-based formatting on span/font/other wrappers */
+  var st = node.style || {};
+  var fwStr = st.fontWeight || '';
+  var fw = fwStr === 'bold' || fwStr === 'bolder' ? 700 : (parseInt(fwStr) || 0);
+  if (fw >= 600) children = '<strong>' + children + '</strong>';
+  if (st.fontStyle === 'italic') children = '<em>' + children + '</em>';
+  var td = st.textDecoration || '';
+  if (td.indexOf('underline')   !== -1) children = '<u>' + children + '</u>';
+  if (td.indexOf('line-through') !== -1) children = '<s>' + children + '</s>';
+  /* Strip the outer tag, return cleaned children */
+  return children;
+}
+
+/* Remove leading/trailing <br> from an HTML string */
+function _trimBrs(html) {
+  return html.replace(/^(\s*<br\s*\/?>)+/i, '').replace(/(\s*<br\s*\/?>)+$/i, '').trim();
+}
+
+/* Parse clipboard HTML+plainText into an array of clean inline-HTML strings (one per paragraph).
+   Block-level tags and <br> become paragraph separators. */
+function _htmlToParagraphs(html, plainText) {
+  if (!html || !html.trim()) {
+    var src = (plainText || '').trim();
+    if (!src) return [''];
+    /* Split on blank lines = paragraph break; single newlines = <br> */
+    var blocks = src.split(/\n{2,}/);
+    return blocks.map(function(block) {
+      return block.trim().split('\n').map(function(l) {
+        return esc(l.trim());
+      }).filter(Boolean).join('<br>');
+    }).filter(Boolean);
+  }
+
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var segments = [];
+  var inline = [];
+
+  function flushInline() {
+    var s = _trimBrs(inline.join(''));
+    if (s) segments.push(s);
+    inline = [];
+  }
+
+  function walk(node) {
+    if (node.nodeType === 3) {
+      inline.push(esc(node.textContent));
+    } else if (node.nodeType === 1) {
+      var tag = node.tagName.toLowerCase();
+      if (tag === 'br') {
+        flushInline();
+      } else if (/^(p|h[1-6]|li|blockquote|section|article|main|header|footer|pre)$/.test(tag)) {
+        flushInline();
+        Array.prototype.slice.call(node.childNodes).forEach(walk);
+        flushInline();
+      } else if (/^(div|td|th)$/.test(tag)) {
+        /* Generic containers: paragraph break on entry/exit */
+        flushInline();
+        Array.prototype.slice.call(node.childNodes).forEach(walk);
+        flushInline();
+      } else if (tag === 'ul' || tag === 'ol') {
+        flushInline();
+        node.querySelectorAll('li').forEach(function(li) {
+          inline.push(esc(li.textContent.trim()));
+          flushInline();
+        });
+      } else if (tag === 'tr') {
+        flushInline();
+        Array.prototype.slice.call(node.childNodes).forEach(walk);
+        flushInline();
+      } else {
+        /* Inline element: clean and add to current segment */
+        inline.push(_cleanInlineNode(node));
+      }
+    }
+  }
+
+  Array.prototype.slice.call(doc.body.childNodes).forEach(walk);
+  flushInline();
+  return segments.length ? segments : [''];
+}
+
+/* Split a contentEditable element's content at the current cursor.
+   Returns { before: string, after: string } as innerHTML strings, or null on failure. */
+function _getCaretSplitContent(el) {
+  var sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  var range = sel.getRangeAt(0);
+  if (!el.contains(range.startContainer)) return null;
+  /* If there is a selection, collapse it by deleting it first */
+  if (!range.collapsed) {
+    range.deleteContents();
+    if (sel.rangeCount === 0) return null;
+    range = sel.getRangeAt(0);
+  }
+
+  var beforeRange = document.createRange();
+  beforeRange.setStart(el, 0);
+  beforeRange.setEnd(range.startContainer, range.startOffset);
+  var afterRange = document.createRange();
+  afterRange.setStart(range.startContainer, range.startOffset);
+  afterRange.setEnd(el, el.childNodes.length);
+
+  var tmp1 = document.createElement('div'); tmp1.appendChild(beforeRange.cloneContents());
+  var tmp2 = document.createElement('div'); tmp2.appendChild(afterRange.cloneContents());
+  return { before: _trimBrs(tmp1.innerHTML), after: _trimBrs(tmp2.innerHTML) };
+}
+
+/* Split a 'p' block into two at the cursor position */
+function _splitParagraphAtCursor(b, el) {
+  var parts = _getCaretSplitContent(el);
+  if (!parts) { document.execCommand('insertLineBreak', false, null); return; }
+
+  /* Update current block with content before cursor */
+  b.content = parts.before;
+  el.innerHTML = parts.before;
+
+  /* Insert new p block after current block */
+  var idx = _blocks.findIndex(function(blk){ return blk.id === b.id; });
+  if (idx < 0) return;
+  var newBlock = mkBlock('p', { content: parts.after, align: b.data.align || '' });
+  _blocks.splice(idx + 1, 0, newBlock);
+  var origEl = $id(b.id);
+  var newEl = _buildBlockEl(newBlock);
+  if (origEl && origEl.nextSibling) origEl.parentNode.insertBefore(newEl, origEl.nextSibling);
+  else if (origEl) origEl.parentNode.appendChild(newEl);
+  else $id('blist').appendChild(newEl);
+  var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+  _updateCount(); syncCode(); schedPv();
+
+  /* Focus the new block and place cursor at the start */
+  setTimeout(function() {
+    var newBEl = $id(newBlock.id);
+    if (!newBEl) return;
+    var richEl = newBEl.querySelector('.rich-be');
+    if (!richEl) return;
+    richEl.focus();
+    var s = window.getSelection();
+    var r = document.createRange();
+    r.setStart(richEl, 0);
+    r.collapse(true);
+    s.removeAllRanges(); s.addRange(r);
+  }, 20);
+}
+
+/* Insert a sequence of p blocks after block with id afterBid, returns the last inserted block id */
+function _insertPBlocksAfter(afterBid, contentArray, align) {
+  var idx = _blocks.findIndex(function(blk){ return blk.id === afterBid; });
+  if (idx < 0) return afterBid;
+  var lastInsertedEl = $id(afterBid);
+  var lastId = afterBid;
+  contentArray.forEach(function(content, i) {
+    var nb = mkBlock('p', { content: content, align: align || '' });
+    _blocks.splice(idx + 1 + i, 0, nb);
+    var newEl = _buildBlockEl(nb);
+    if (lastInsertedEl && lastInsertedEl.nextSibling) lastInsertedEl.parentNode.insertBefore(newEl, lastInsertedEl.nextSibling);
+    else if (lastInsertedEl) lastInsertedEl.parentNode.appendChild(newEl);
+    else $id('blist').appendChild(newEl);
+    lastInsertedEl = newEl;
+    lastId = nb.id;
+  });
+  return lastId;
+}
+
+/* Paste handler for 'p' blocks: cleans inline formatting, splits into multiple blocks if needed */
+function _handlePBlockPaste(e, d, b) {
+  e.preventDefault();
+  var html  = e.clipboardData ? e.clipboardData.getData('text/html')  : '';
+  var text  = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  var paras = _htmlToParagraphs(html, text);
+
+  if (paras.length <= 1) {
+    /* Single paragraph: insert at cursor position */
+    document.execCommand('insertHTML', false, paras[0] || '');
+    return;
+  }
+
+  /* Multi-paragraph: split current block at cursor, distribute paragraphs */
+  var parts = _getCaretSplitContent(d);
+  if (!parts) {
+    /* Can't determine cursor position: just join with <br> and insert */
+    document.execCommand('insertHTML', false, paras.join('<br>'));
+    return;
+  }
+
+  var firstContent = parts.before + paras[0];
+  var lastContent  = paras[paras.length - 1] + parts.after;
+  var allContents  = [firstContent].concat(paras.slice(1, -1)).concat([lastContent]);
+
+  /* Update current block with first paragraph */
+  b.content = allContents[0];
+  d.innerHTML = allContents[0];
+
+  /* Insert remaining paragraphs as new blocks */
+  var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+  var lastId = _insertPBlocksAfter(b.id, allContents.slice(1), b.data.align || '');
+  _updateCount(); syncCode(); schedPv();
+
+  /* Focus end of last inserted block */
+  setTimeout(function() {
+    var lastBEl = $id(lastId);
+    if (!lastBEl) return;
+    var richEl = lastBEl.querySelector('.rich-be');
+    if (!richEl) return;
+    richEl.focus();
+    var s = window.getSelection();
+    var r = document.createRange();
+    r.selectNodeContents(richEl);
+    r.collapse(false);
+    s.removeAllRanges(); s.addRange(r);
+  }, 20);
+}
+
+/* Paste handler for non-p rich text blocks (blockquote, abstract, infobox):
+   cleans inline formatting, joins multiple paragraphs with <br> */
+function _handleGenericRichPaste(e) {
+  e.preventDefault();
+  var html  = e.clipboardData ? e.clipboardData.getData('text/html')  : '';
+  var text  = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  var paras = _htmlToParagraphs(html, text);
+  document.execCommand('insertHTML', false, paras.filter(Boolean).join('<br>'));
+}
+
+/* =========================================================
    BUILD RICH EDITABLE DIV (for p, blockquote, abstract, infobox)
    Uses innerHTML so inline formatting tags (<strong>, <em>, etc.)
    are preserved. Ctrl+B/I/S/U apply formatting shortcuts.
+   opts.onEnter: optional callback(e, el) overriding Enter key behavior.
    ========================================================= */
-function makeRichBE(content, placeholder) {
+function makeRichBE(content, placeholder, opts) {
+  opts = opts || {};
   var d = document.createElement('div');
   d.className = 'be rich-be';
   d.contentEditable = 'true';
@@ -862,7 +1109,8 @@ function makeRichBE(content, placeholder) {
   d.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      document.execCommand('insertLineBreak', false, null);
+      if (opts.onEnter) opts.onEnter(e, d);
+      else document.execCommand('insertLineBreak', false, null);
     }
     if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
@@ -989,8 +1237,8 @@ function _buildInner(inner, b) {
     return d;
   }
 
-  function addRichBE(content, placeholder, onChange) {
-    var d = makeRichBE(content, placeholder);
+  function addRichBE(content, placeholder, onChange, opts) {
+    var d = makeRichBE(content, placeholder, opts);
     inner.appendChild(d);
     d.addEventListener('input', function() { onChange(d.innerHTML); syncCode(); schedPv(); });
     return d;
@@ -1021,7 +1269,10 @@ function _buildInner(inner, b) {
       break;
 
     case 'p': {
-      addRichBE(b.content, '输入段落文字…', function(v){ b.content=v; });
+      var d = addRichBE(b.content, '输入段落文字…', function(v){ b.content=v; }, {
+        onEnter: function(e, el) { _splitParagraphAtCursor(b, el); }
+      });
+      d.addEventListener('paste', function(e) { _handlePBlockPaste(e, d, b); });
       addAlignRow(b);
       break;
     }
@@ -1029,6 +1280,7 @@ function _buildInner(inner, b) {
     case 'blockquote': {
       var wrap = mkDiv('bqx'); inner.appendChild(wrap);
       var d = makeRichBE(b.content, '引用文字…');
+      d.addEventListener('paste', _handleGenericRichPaste);
       wrap.appendChild(d);
       d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
       break;
@@ -1044,6 +1296,7 @@ function _buildInner(inner, b) {
       var wrap = mkDiv('abx'); inner.appendChild(wrap);
       var tit = mkDiv('abxtit'); tit.textContent='Abstract / 摘要'; wrap.appendChild(tit);
       var d = makeRichBE(b.content, '摘要内容…');
+      d.addEventListener('paste', _handleGenericRichPaste);
       wrap.appendChild(d);
       d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
       addAlignRow(b);
@@ -1074,7 +1327,9 @@ function _buildInner(inner, b) {
       wrap.style.background=c.bg; wrap.style.border='.5px solid '+c.bd;
       var tit = mkDiv('ibxtit'); tit.style.color=c.tc;
       tit.textContent = b.data.ibTitle || '提示'; wrap.appendChild(tit);
-      var d = makeRichBE(b.content, '内容…'); d.style.color=c.tc; wrap.appendChild(d);
+      var d = makeRichBE(b.content, '内容…'); d.style.color=c.tc;
+      d.addEventListener('paste', _handleGenericRichPaste);
+      wrap.appendChild(d);
       inner.appendChild(wrap);
       d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
       addEditBtn('修改信息框', openInfoboxDialog);
@@ -1971,9 +2226,12 @@ function _parsePasteContent(html, text) {
 function openPasteDlg(html, text) {
   _pasteBlocks = _parsePasteContent(html || '', text || '');
   if (!_pasteBlocks.length) return;
-  /* Build preview HTML – use a simple wrapper without external scripts for the sandboxed iframe */
+  /* Build preview HTML and strip <script> tags via DOMParser for the sandboxed iframe */
   var previewBody = _pasteBlocks.map(b2html).join('\n\n');
-  var previewHtml = wrapHTML(previewBody).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  var rawHtml = wrapHTML(previewBody);
+  var previewDoc = new DOMParser().parseFromString(rawHtml, 'text/html');
+  previewDoc.querySelectorAll('script').forEach(function(s){ s.remove(); });
+  var previewHtml = '<!DOCTYPE html>\n' + previewDoc.documentElement.outerHTML;
   /* Populate iframe via srcdoc */
   $id('paste-iframe').srcdoc = previewHtml;
   /* Populate code area */
@@ -2876,9 +3134,7 @@ function _isModalOpen() {
 /* Intercept paste (Ctrl+V) when not editing text */
 document.addEventListener('paste', function(e) {
   if (_isEditingText()) return; // let native paste handle text fields
-  if ($id('doverlay').classList.contains('open')) return; // existing dialog has focus
-  if ($id('sc-overlay').classList.contains('open')) return;
-  if ($id('paste-overlay').classList.contains('open')) return;
+  if (_isModalOpen()) return;   // dialog is open, don't intercept
   e.preventDefault();
   var html = e.clipboardData ? e.clipboardData.getData('text/html') : '';
   var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
