@@ -1,0 +1,10 @@
+/* ── Design tokens / CSS variables ── */
+:root{
+  --ac:#2644ba;--acl:#e8ecf9;--acm:#8fa0dc;--acd:#1a3090;--acb:#b8c4ec;
+  --bg0:#fff;--bg1:#f5f5f3;--bg2:#eeede9;--bge:#1e1e2e;
+  --t0:#1a1a18;--t1:#5f5e5a;--t2:#888780;
+  --bl:rgba(0,0,0,0.08);--bm:rgba(0,0,0,0.14);
+  --fs:-apple-system,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --fm:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --r4:4px;--r8:8px;--r12:12px
+}

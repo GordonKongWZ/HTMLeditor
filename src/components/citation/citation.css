@@ -1,0 +1,3 @@
+/* ── Citation / Blockquote component styles ── */
+.bqx{border-left:3px solid var(--ac);background:var(--acl);border-radius:0 var(--r8) var(--r8) 0;padding:7px 10px}
+.bqx .be{font-style:italic;color:var(--acd);font-size:13px}

@@ -1,0 +1,10 @@
+/* ── Reset & Base ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-smoothing:antialiased}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bm);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--acm)}
