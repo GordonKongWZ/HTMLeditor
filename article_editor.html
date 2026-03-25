@@ -2473,14 +2473,14 @@ var SC_DEFS = [
   { id:'sc-help',   label:'显示快捷键帮助',     cat:'other',  def:'?',      fixed:true },
 ];
 
-var _SC_KEY = 'htmleditor_sc_v1'; // localStorage key
-var _scMap = {};                   // id → current key ('' = unbound)
-var _scCapturing = null;           // id being captured, or null
+var _scKey = 'htmleditor_sc_v1'; // localStorage key
+var _scMap = {};                  // id → current key ('' = unbound)
+var _scCapturing = null;          // id being captured, or null
 
-(function _initScMap() {
+(function() {
   SC_DEFS.forEach(function(d) { if (!d.fixed) _scMap[d.id] = d.def; });
   try {
-    var s = localStorage.getItem(_SC_KEY);
+    var s = localStorage.getItem(_scKey);
     if (s) {
       var o = JSON.parse(s);
       SC_DEFS.forEach(function(d) {
@@ -2493,7 +2493,13 @@ var _scCapturing = null;           // id being captured, or null
 })();
 
 function _scSave() {
-  try { localStorage.setItem(_SC_KEY, JSON.stringify(_scMap)); } catch(ex) {}
+  try { localStorage.setItem(_scKey, JSON.stringify(_scMap)); } catch(ex) {}
+}
+
+/* Returns true if the configurable shortcut `id` is bound to `keyNorm` (lowercase) */
+function _scMatchesKey(id, keyNorm) {
+  var k = _scMap[id];
+  return k !== '' && k !== undefined && k.toLowerCase() === keyNorm;
 }
 
 function _scReset() {
@@ -2629,7 +2635,7 @@ function _scHandleCapture(e) {
 
   // Displace any other configurable action that already owns this key
   SC_DEFS.forEach(function(d) {
-    if (!d.fixed && d.id !== _scCapturing && _scMap[d.id].toLowerCase() === keyNorm) {
+    if (!d.fixed && d.id !== _scCapturing && _scMatchesKey(d.id, keyNorm)) {
       _scMap[d.id] = '';
     }
   });
@@ -2693,11 +2699,11 @@ document.addEventListener('keydown', function(e) {
   // Configurable shortcuts: look up in _scMap
   if (e.key.length !== 1) return;
   var keyNorm = e.key.toLowerCase();
-  for (var _si = 0; _si < SC_DEFS.length; _si++) {
-    var _sd = SC_DEFS[_si];
-    if (!_sd.fixed && _scMap[_sd.id] && _scMap[_sd.id].toLowerCase() === keyNorm) {
+  for (var i = 0; i < SC_DEFS.length; i++) {
+    var def = SC_DEFS[i];
+    if (!def.fixed && _scMatchesKey(def.id, keyNorm)) {
       e.preventDefault();
-      _scDispatch(_sd.id);
+      _scDispatch(def.id);
       return;
     }
   }
