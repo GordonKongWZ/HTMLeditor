@@ -492,7 +492,7 @@ kbd{
   <div class="vsep"></div>
   <button class="tbtn" id="btn-clear">🗑 清空</button>
   <div class="vsep"></div>
-  <button class="tbtn" id="btn-shortcuts" title="键盘快捷键 (?)">⌨ 快捷键</button>
+  <button class="tbtn" id="btn-shortcuts" title="键盘快捷键 (?)" aria-label="键盘快捷键">⌨ 快捷键</button>
   <div class="spacer"></div>
   <span style="font-size:11px;color:var(--t2)" id="bcount">0 个块</span>
 </div>
@@ -651,7 +651,7 @@ kbd{
   <div id="sc-box">
     <div id="sc-head">
       <span>⌨ 键盘快捷键</span>
-      <button id="sc-close">✕</button>
+      <button id="sc-close" aria-label="关闭快捷键帮助">✕</button>
     </div>
     <div id="sc-body">
       <div class="sc-section">
@@ -2472,6 +2472,13 @@ function _isModalOpen() {
 }
 
 document.addEventListener('keydown', function(e) {
+  // Escape: close shortcut modal first; otherwise deselect block (when not editing)
+  if (e.key === 'Escape') {
+    if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
+    if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
+    return;
+  }
+
   // Ctrl/Meta+D: duplicate selected block (works even without focus restriction)
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd') {
     if (!_isEditingText() && !_isModalOpen() && _sel) {
@@ -2512,9 +2519,6 @@ document.addEventListener('keydown', function(e) {
     case 'Backspace':
       if (_sel) { e.preventDefault(); deleteBlock(_sel); }
       break;
-    case 'Escape':
-      setSelected(null);
-      break;
     case '?':
       e.preventDefault();
       openShortcutHelp();
@@ -2535,11 +2539,6 @@ function closeShortcutHelp() {
 $id('sc-close').addEventListener('click', closeShortcutHelp);
 $id('sc-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeShortcutHelp();
-});
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape' && $id('sc-overlay').classList.contains('open')) {
-    closeShortcutHelp();
-  }
 });
 $id('btn-shortcuts').addEventListener('click', openShortcutHelp);
 
