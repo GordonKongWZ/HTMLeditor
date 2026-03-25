@@ -1000,8 +1000,9 @@ function _splitParagraphAtCursor(b, el) {
   var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
   _updateCount(); syncCode(); schedPv();
 
-  /* Focus the new block and place cursor at the start */
+  /* Select and focus the new block, placing cursor at the start */
   setTimeout(function() {
+    setSelected(newBlock.id);
     var newBEl = $id(newBlock.id);
     if (!newBEl) return;
     var richEl = newBEl.querySelector('.rich-be');
