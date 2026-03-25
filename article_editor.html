@@ -446,18 +446,24 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #sc-overlay.open{display:flex}
 #sc-box{
   background:#fff;border-radius:var(--r12);box-shadow:0 8px 40px rgba(0,0,0,.18);
-  width:540px;max-width:calc(100vw - 32px);max-height:80vh;display:flex;flex-direction:column;overflow:hidden
+  width:560px;max-width:calc(100vw - 32px);max-height:80vh;display:flex;flex-direction:column;overflow:hidden
 }
 #sc-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:14px 18px 12px;border-bottom:1px solid var(--bl);flex-shrink:0
 }
 #sc-head span{font-weight:600;font-size:14px;color:var(--t0)}
+#sc-head-acts{display:flex;align-items:center;gap:6px}
 #sc-close{
   border:none;background:transparent;font-size:16px;color:var(--t2);cursor:pointer;
   padding:2px 6px;border-radius:var(--r4);line-height:1;transition:all .1s
 }
 #sc-close:hover{background:var(--bg2);color:var(--t0)}
+.sc-reset-btn{
+  padding:2px 8px;border:1px solid var(--bm);border-radius:var(--r4);
+  background:transparent;font-size:11px;font-family:var(--fs);color:var(--t1);cursor:pointer;transition:all .1s
+}
+.sc-reset-btn:hover{background:var(--bg2);color:var(--t0)}
 #sc-body{overflow-y:auto;padding:14px 18px 18px}
 .sc-section{margin-bottom:16px}
 .sc-section:last-child{margin-bottom:0}
@@ -465,13 +471,30 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .sc-table{width:100%;border-collapse:collapse}
 .sc-table tr+tr td{border-top:1px solid var(--bl)}
 .sc-table td{padding:5px 0;font-size:12px;vertical-align:middle}
-.sc-table td:first-child{width:38%;color:var(--t1)}
+.sc-table td:first-child{width:58%;color:var(--t1)}
 .sc-table td:last-child{color:var(--t0)}
 kbd{
   display:inline-block;padding:1px 6px;border:1px solid var(--bm);border-bottom-width:2px;
   border-radius:4px;background:var(--bg1);font-family:var(--fm);font-size:11px;
   color:var(--t0);line-height:1.6;white-space:nowrap
 }
+/* Editable key badges */
+.sc-kbd-cell{display:flex;align-items:center;gap:4px}
+.sc-edit-badge{
+  display:inline-flex;align-items:center;gap:4px;cursor:pointer;
+  padding:2px 4px;border-radius:var(--r4);transition:background .1s
+}
+.sc-edit-badge:hover{background:var(--acl)}
+.sc-edit-tip{
+  font-size:9px;color:var(--acm);opacity:0;transition:opacity .1s;
+  font-family:var(--fs);white-space:nowrap
+}
+.sc-edit-badge:hover .sc-edit-tip{opacity:1}
+.sc-edit-badge.sc-capturing .sc-edit-tip{opacity:1;color:var(--ac)}
+.sc-edit-badge.sc-capturing kbd{background:var(--acl);border-color:var(--ac);color:var(--ac)}
+kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font-style:italic}
+.sc-unbound-lbl{font-size:11px;color:var(--t2);font-style:italic}
+.sc-hint{font-size:10px;color:var(--t2);margin-top:14px;text-align:center;padding-top:10px;border-top:1px solid var(--bl)}
 </style>
 </head>
 <body>
@@ -651,50 +674,12 @@ kbd{
   <div id="sc-box">
     <div id="sc-head">
       <span>⌨ 键盘快捷键</span>
-      <button id="sc-close" aria-label="关闭快捷键帮助">✕</button>
-    </div>
-    <div id="sc-body">
-      <div class="sc-section">
-        <div class="sc-section-title">插入块（非编辑状态下）</div>
-        <table class="sc-table">
-          <tr><td><kbd>1</kbd> – <kbd>5</kbd></td><td>插入 H1 – H5 标题</td></tr>
-          <tr><td><kbd>P</kbd></td><td>插入段落</td></tr>
-          <tr><td><kbd>Q</kbd></td><td>插入引用块</td></tr>
-          <tr><td><kbd>U</kbd></td><td>插入无序列表</td></tr>
-          <tr><td><kbd>O</kbd></td><td>插入有序列表</td></tr>
-          <tr><td><kbd>C</kbd></td><td>打开代码块对话框</td></tr>
-          <tr><td><kbd>I</kbd></td><td>打开图片对话框</td></tr>
-          <tr><td><kbd>V</kbd></td><td>打开视频对话框</td></tr>
-          <tr><td><kbd>E</kbd></td><td>打开公式块对话框</td></tr>
-          <tr><td><kbd>T</kbd></td><td>打开表格对话框</td></tr>
-          <tr><td><kbd>D</kbd></td><td>插入分割线</td></tr>
-        </table>
-      </div>
-      <div class="sc-section">
-        <div class="sc-section-title">选中块操作（非编辑状态下）</div>
-        <table class="sc-table">
-          <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>上移 / 下移选中块</td></tr>
-          <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>删除选中块</td></tr>
-          <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>复制选中块</td></tr>
-          <tr><td><kbd>Escape</kbd></td><td>取消选中</td></tr>
-        </table>
-      </div>
-      <div class="sc-section">
-        <div class="sc-section-title">富文本格式（文本编辑中）</div>
-        <table class="sc-table">
-          <tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>粗体</td></tr>
-          <tr><td><kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>斜体</td></tr>
-          <tr><td><kbd>Ctrl</kbd>+<kbd>U</kbd></td><td>下划线</td></tr>
-          <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>删除线</td></tr>
-        </table>
-      </div>
-      <div class="sc-section">
-        <div class="sc-section-title">其他</div>
-        <table class="sc-table">
-          <tr><td><kbd>?</kbd></td><td>显示此快捷键帮助</td></tr>
-        </table>
+      <div id="sc-head-acts">
+        <button class="sc-reset-btn" id="sc-reset" aria-label="恢复默认快捷键">↺ 恢复默认</button>
+        <button id="sc-close" aria-label="关闭快捷键帮助">✕</button>
       </div>
     </div>
+    <div id="sc-body"></div>
   </div>
 </div>
 
@@ -2452,8 +2437,208 @@ window.__pvBidClick = function(bid) {
 })();
 
 /* =========================================================
-   KEYBOARD SHORTCUTS
+   KEYBOARD SHORTCUTS CONFIG
    ========================================================= */
+
+/* Shortcut definitions.
+   Configurable (fixed:false) ones are stored in localStorage and
+   shown as editable badges in the shortcuts modal.
+   Fixed ones are always shown as static info. */
+var SC_DEFS = [
+  { id:'ins-h1',    label:'插入 H1 标题',       cat:'insert', def:'1' },
+  { id:'ins-h2',    label:'插入 H2 标题',       cat:'insert', def:'2' },
+  { id:'ins-h3',    label:'插入 H3 标题',       cat:'insert', def:'3' },
+  { id:'ins-h4',    label:'插入 H4 标题',       cat:'insert', def:'4' },
+  { id:'ins-h5',    label:'插入 H5 标题',       cat:'insert', def:'5' },
+  { id:'ins-p',     label:'插入段落',           cat:'insert', def:'p' },
+  { id:'ins-q',     label:'插入引用块',         cat:'insert', def:'q' },
+  { id:'ins-ul',    label:'插入无序列表',       cat:'insert', def:'u' },
+  { id:'ins-ol',    label:'插入有序列表',       cat:'insert', def:'o' },
+  { id:'ins-code',  label:'代码块（对话框）',   cat:'insert', def:'c' },
+  { id:'ins-img',   label:'图片（对话框）',     cat:'insert', def:'i' },
+  { id:'ins-video', label:'视频（对话框）',     cat:'insert', def:'v' },
+  { id:'ins-eq',    label:'公式块（对话框）',   cat:'insert', def:'e' },
+  { id:'ins-table', label:'表格（对话框）',     cat:'insert', def:'t' },
+  { id:'ins-div',   label:'插入分割线',         cat:'insert', def:'d' },
+  // Fixed shortcuts shown for reference
+  { id:'blk-up',    label:'上移选中块',         cat:'block',  def:'↑',      fixed:true },
+  { id:'blk-dn',    label:'下移选中块',         cat:'block',  def:'↓',      fixed:true },
+  { id:'blk-del',   label:'删除选中块',         cat:'block',  def:'Delete', fixed:true },
+  { id:'blk-dup',   label:'复制选中块',         cat:'block',  def:'Ctrl+D', fixed:true },
+  { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape', fixed:true },
+  { id:'fmt-b',     label:'粗体',               cat:'rich',   def:'Ctrl+B', fixed:true },
+  { id:'fmt-i',     label:'斜体',               cat:'rich',   def:'Ctrl+I', fixed:true },
+  { id:'fmt-u',     label:'下划线',             cat:'rich',   def:'Ctrl+U', fixed:true },
+  { id:'fmt-s',     label:'删除线',             cat:'rich',   def:'Ctrl+S', fixed:true },
+  { id:'sc-help',   label:'显示快捷键帮助',     cat:'other',  def:'?',      fixed:true },
+];
+
+var _SC_KEY = 'htmleditor_sc_v1'; // localStorage key
+var _scMap = {};                   // id → current key ('' = unbound)
+var _scCapturing = null;           // id being captured, or null
+
+(function _initScMap() {
+  SC_DEFS.forEach(function(d) { if (!d.fixed) _scMap[d.id] = d.def; });
+  try {
+    var s = localStorage.getItem(_SC_KEY);
+    if (s) {
+      var o = JSON.parse(s);
+      SC_DEFS.forEach(function(d) {
+        if (!d.fixed && o.hasOwnProperty(d.id) && typeof o[d.id] === 'string') {
+          _scMap[d.id] = o[d.id];
+        }
+      });
+    }
+  } catch(ex) {}
+})();
+
+function _scSave() {
+  try { localStorage.setItem(_SC_KEY, JSON.stringify(_scMap)); } catch(ex) {}
+}
+
+function _scReset() {
+  SC_DEFS.forEach(function(d) { if (!d.fixed) _scMap[d.id] = d.def; });
+  _scSave();
+  _scCapturing = null;
+  _renderScModal();
+}
+
+/* Dispatch a configurable shortcut action */
+function _scDispatch(id) {
+  switch (id) {
+    case 'ins-h1':    insertBlock('h1'); break;
+    case 'ins-h2':    insertBlock('h2'); break;
+    case 'ins-h3':    insertBlock('h3'); break;
+    case 'ins-h4':    insertBlock('h4'); break;
+    case 'ins-h5':    insertBlock('h5'); break;
+    case 'ins-p':     insertBlock('p'); break;
+    case 'ins-q':     insertBlock('blockquote'); break;
+    case 'ins-ul':    insertBlock('ul'); break;
+    case 'ins-ol':    insertBlock('ol'); break;
+    case 'ins-code':  openCodeDialog(); break;
+    case 'ins-img':   openImgDialog(); break;
+    case 'ins-video': openVideoDialog(); break;
+    case 'ins-eq':    openEqDialog('block'); break;
+    case 'ins-table': openTableDialog(); break;
+    case 'ins-div':   insertBlock('divider'); break;
+  }
+}
+
+/* Render shortcut modal body (called each time modal opens or binding changes) */
+function _renderScModal() {
+  var body = $id('sc-body');
+  body.innerHTML = '';
+
+  var CAT_TITLES = {
+    insert: '插入块（可自定义 · 点击按键修改）',
+    block:  '选中块操作（固定）',
+    rich:   '富文本格式（固定 · 文本编辑中）',
+    other:  '其他（固定）'
+  };
+
+  ['insert', 'block', 'rich', 'other'].forEach(function(cat) {
+    var defs = SC_DEFS.filter(function(d) { return d.cat === cat; });
+    if (!defs.length) return;
+
+    var sec = mkDiv('sc-section');
+    var h = document.createElement('div');
+    h.className = 'sc-section-title'; h.textContent = CAT_TITLES[cat];
+    sec.appendChild(h);
+
+    var tbl = document.createElement('table'); tbl.className = 'sc-table';
+    defs.forEach(function(def) {
+      var tr = document.createElement('tr');
+      var td1 = document.createElement('td'); td1.textContent = def.label;
+      var td2 = document.createElement('td'); td2.className = 'sc-kbd-cell';
+
+      if (def.fixed) {
+        td2.innerHTML = _scKeyHtml(def.def);
+      } else {
+        td2.appendChild(_scMakeEditBadge(def));
+      }
+
+      tr.appendChild(td1); tr.appendChild(td2);
+      tbl.appendChild(tr);
+    });
+    sec.appendChild(tbl);
+    body.appendChild(sec);
+  });
+
+  var hint = mkDiv('sc-hint');
+  hint.textContent = '可自定义项仅支持字母和数字键（无修饰键）；已被占用的绑定将自动解除';
+  body.appendChild(hint);
+}
+
+/* Returns inline HTML for displaying a key (may contain + for combos) */
+function _scKeyHtml(key) {
+  if (!key) return '<span class="sc-unbound-lbl">—</span>';
+  return key.split('+').map(function(p) { return '<kbd>' + esc(p) + '</kbd>'; }).join('+');
+}
+
+/* Build an editable key badge DOM element */
+function _scMakeEditBadge(def) {
+  var key = _scMap[def.id] || '';
+  var isCapturing = (def.id === _scCapturing);
+
+  var badge = document.createElement('span');
+  badge.className = 'sc-edit-badge' + (isCapturing ? ' sc-capturing' : '');
+  badge.dataset.scid = def.id;
+
+  var kbd = document.createElement('kbd');
+  if (!key) kbd.className = 'sc-unbound';
+
+  if (isCapturing) {
+    kbd.textContent = '…';
+  } else {
+    kbd.textContent = key ? key.toUpperCase() : '—';
+  }
+
+  var tip = document.createElement('span');
+  tip.className = 'sc-edit-tip';
+  tip.textContent = isCapturing ? '按新键（Esc 取消）' : (key ? '✎ 点击修改' : '✎ 点击绑定');
+
+  badge.appendChild(kbd);
+  badge.appendChild(tip);
+
+  badge.addEventListener('click', function(e) {
+    e.stopPropagation();
+    _scCapturing = def.id;
+    _renderScModal();
+  });
+
+  return badge;
+}
+
+/* Handle a keydown while in capture mode */
+function _scHandleCapture(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (e.key === 'Escape') {
+    _scCapturing = null;
+    _renderScModal();
+    return;
+  }
+
+  // Accept only single letter or digit, no modifiers
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  var key = e.key;
+  if (key.length !== 1 || !/^[a-z0-9]$/i.test(key)) return;
+
+  var keyNorm = key.toLowerCase();
+
+  // Displace any other configurable action that already owns this key
+  SC_DEFS.forEach(function(d) {
+    if (!d.fixed && d.id !== _scCapturing && _scMap[d.id].toLowerCase() === keyNorm) {
+      _scMap[d.id] = '';
+    }
+  });
+
+  _scMap[_scCapturing] = keyNorm;
+  _scSave();
+  _scCapturing = null;
+  _renderScModal();
+}
 
 /* Returns true when the user is actively editing text (so shortcuts should not fire) */
 function _isEditingText() {
@@ -2472,6 +2657,9 @@ function _isModalOpen() {
 }
 
 document.addEventListener('keydown', function(e) {
+  // Capture mode takes priority over everything
+  if (_scCapturing) { _scHandleCapture(e); return; }
+
   // Escape: close shortcut modal first; otherwise deselect block (when not editing)
   if (e.key === 'Escape') {
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
@@ -2479,7 +2667,7 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // Ctrl/Meta+D: duplicate selected block (works even without focus restriction)
+  // Ctrl/Meta+D: duplicate selected block
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd') {
     if (!_isEditingText() && !_isModalOpen() && _sel) {
       e.preventDefault();
@@ -2493,36 +2681,25 @@ document.addEventListener('keydown', function(e) {
   if (_isModalOpen()) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
 
+  // Fixed non-configurable shortcuts
   switch (e.key) {
-    case '1': e.preventDefault(); insertBlock('h1'); break;
-    case '2': e.preventDefault(); insertBlock('h2'); break;
-    case '3': e.preventDefault(); insertBlock('h3'); break;
-    case '4': e.preventDefault(); insertBlock('h4'); break;
-    case '5': e.preventDefault(); insertBlock('h5'); break;
-    case 'p': case 'P': e.preventDefault(); insertBlock('p'); break;
-    case 'q': case 'Q': e.preventDefault(); insertBlock('blockquote'); break;
-    case 'u': case 'U': e.preventDefault(); insertBlock('ul'); break;
-    case 'o': case 'O': e.preventDefault(); insertBlock('ol'); break;
-    case 'c': case 'C': e.preventDefault(); openCodeDialog(); break;
-    case 'i': case 'I': e.preventDefault(); openImgDialog(); break;
-    case 'v': case 'V': e.preventDefault(); openVideoDialog(); break;
-    case 'e': case 'E': e.preventDefault(); openEqDialog('block'); break;
-    case 't': case 'T': e.preventDefault(); openTableDialog(); break;
-    case 'd': case 'D': e.preventDefault(); insertBlock('divider'); break;
-    case 'ArrowUp':
-      if (_sel) { e.preventDefault(); moveBlock(_sel, -1); }
-      break;
-    case 'ArrowDown':
-      if (_sel) { e.preventDefault(); moveBlock(_sel, 1); }
-      break;
+    case 'ArrowUp':   if (_sel) { e.preventDefault(); moveBlock(_sel, -1); } return;
+    case 'ArrowDown': if (_sel) { e.preventDefault(); moveBlock(_sel,  1); } return;
     case 'Delete':
-    case 'Backspace':
-      if (_sel) { e.preventDefault(); deleteBlock(_sel); }
-      break;
-    case '?':
+    case 'Backspace': if (_sel) { e.preventDefault(); deleteBlock(_sel); }   return;
+    case '?': e.preventDefault(); openShortcutHelp(); return;
+  }
+
+  // Configurable shortcuts: look up in _scMap
+  if (e.key.length !== 1) return;
+  var keyNorm = e.key.toLowerCase();
+  for (var _si = 0; _si < SC_DEFS.length; _si++) {
+    var _sd = SC_DEFS[_si];
+    if (!_sd.fixed && _scMap[_sd.id] && _scMap[_sd.id].toLowerCase() === keyNorm) {
       e.preventDefault();
-      openShortcutHelp();
-      break;
+      _scDispatch(_sd.id);
+      return;
+    }
   }
 });
 
@@ -2530,13 +2707,16 @@ document.addEventListener('keydown', function(e) {
    SHORTCUT HELP MODAL
    ========================================================= */
 function openShortcutHelp() {
+  _renderScModal();
   $id('sc-overlay').classList.add('open');
 }
 function closeShortcutHelp() {
+  _scCapturing = null;
   $id('sc-overlay').classList.remove('open');
 }
 
 $id('sc-close').addEventListener('click', closeShortcutHelp);
+$id('sc-reset').addEventListener('click', _scReset);
 $id('sc-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeShortcutHelp();
 });
