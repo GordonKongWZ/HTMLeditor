@@ -1913,7 +1913,7 @@ function scrollPreviewToBlock(bid) {
     if (!doc.getElementById('_pv_hl_style')) {
       var s = doc.createElement('style');
       s.id = '_pv_hl_style';
-      s.textContent = '@keyframes _pv_hl{0%,60%{outline:1px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
+      s.textContent = '@keyframes _pv_hl{0%,60%{outline:1.5px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1.5px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1.5px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
       (doc.head || doc.body).appendChild(s);
     }
     var prev = doc.querySelector('._pv_hl');
@@ -2976,7 +2976,7 @@ function _openPvCtxMenu(bid, x, y) {
     if (fdoc && !fdoc.getElementById('_pv_hl_style')) {
       var s = fdoc.createElement('style');
       s.id = '_pv_hl_style';
-      s.textContent = '@keyframes _pv_hl{0%,60%{outline:1px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
+      s.textContent = '@keyframes _pv_hl{0%,60%{outline:1.5px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1.5px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1.5px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
       (fdoc.head || fdoc.body).appendChild(s);
     }
     var el = fdoc && fdoc.querySelector('[data-bid="' + bid + '"]');
