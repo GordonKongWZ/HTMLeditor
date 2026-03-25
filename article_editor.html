@@ -437,6 +437,41 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:140px
 }
 #ctxm-tree.open{display:block}
+
+/* ── Shortcut Help Modal ── */
+#sc-overlay{
+  display:none;position:fixed;inset:0;z-index:3000;
+  background:rgba(0,0,0,.38);align-items:center;justify-content:center
+}
+#sc-overlay.open{display:flex}
+#sc-box{
+  background:#fff;border-radius:var(--r12);box-shadow:0 8px 40px rgba(0,0,0,.18);
+  width:540px;max-width:calc(100vw - 32px);max-height:80vh;display:flex;flex-direction:column;overflow:hidden
+}
+#sc-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 12px;border-bottom:1px solid var(--bl);flex-shrink:0
+}
+#sc-head span{font-weight:600;font-size:14px;color:var(--t0)}
+#sc-close{
+  border:none;background:transparent;font-size:16px;color:var(--t2);cursor:pointer;
+  padding:2px 6px;border-radius:var(--r4);line-height:1;transition:all .1s
+}
+#sc-close:hover{background:var(--bg2);color:var(--t0)}
+#sc-body{overflow-y:auto;padding:14px 18px 18px}
+.sc-section{margin-bottom:16px}
+.sc-section:last-child{margin-bottom:0}
+.sc-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t2);margin-bottom:7px}
+.sc-table{width:100%;border-collapse:collapse}
+.sc-table tr+tr td{border-top:1px solid var(--bl)}
+.sc-table td{padding:5px 0;font-size:12px;vertical-align:middle}
+.sc-table td:first-child{width:38%;color:var(--t1)}
+.sc-table td:last-child{color:var(--t0)}
+kbd{
+  display:inline-block;padding:1px 6px;border:1px solid var(--bm);border-bottom-width:2px;
+  border-radius:4px;background:var(--bg1);font-family:var(--fm);font-size:11px;
+  color:var(--t0);line-height:1.6;white-space:nowrap
+}
 </style>
 </head>
 <body>
@@ -456,6 +491,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   <button class="tbtn" id="btn-copy">📋 复制代码</button>
   <div class="vsep"></div>
   <button class="tbtn" id="btn-clear">🗑 清空</button>
+  <div class="vsep"></div>
+  <button class="tbtn" id="btn-shortcuts" title="键盘快捷键 (?)">⌨ 快捷键</button>
   <div class="spacer"></div>
   <span style="font-size:11px;color:var(--t2)" id="bcount">0 个块</span>
 </div>
@@ -606,6 +643,58 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
     <span class="fmt-clr" data-c="#2644ba" style="background:#2644ba" title="蓝色"></span>
     <span class="fmt-clr" data-c="#6a0572" style="background:#6a0572" title="紫色"></span>
     <span class="fmt-clr fmt-clr-clear" data-c="" title="清除颜色"></span>
+  </div>
+</div>
+
+<!-- Shortcut Help Modal -->
+<div id="sc-overlay">
+  <div id="sc-box">
+    <div id="sc-head">
+      <span>⌨ 键盘快捷键</span>
+      <button id="sc-close">✕</button>
+    </div>
+    <div id="sc-body">
+      <div class="sc-section">
+        <div class="sc-section-title">插入块（非编辑状态下）</div>
+        <table class="sc-table">
+          <tr><td><kbd>1</kbd> – <kbd>5</kbd></td><td>插入 H1 – H5 标题</td></tr>
+          <tr><td><kbd>P</kbd></td><td>插入段落</td></tr>
+          <tr><td><kbd>Q</kbd></td><td>插入引用块</td></tr>
+          <tr><td><kbd>U</kbd></td><td>插入无序列表</td></tr>
+          <tr><td><kbd>O</kbd></td><td>插入有序列表</td></tr>
+          <tr><td><kbd>C</kbd></td><td>打开代码块对话框</td></tr>
+          <tr><td><kbd>I</kbd></td><td>打开图片对话框</td></tr>
+          <tr><td><kbd>V</kbd></td><td>打开视频对话框</td></tr>
+          <tr><td><kbd>E</kbd></td><td>打开公式块对话框</td></tr>
+          <tr><td><kbd>T</kbd></td><td>打开表格对话框</td></tr>
+          <tr><td><kbd>D</kbd></td><td>插入分割线</td></tr>
+        </table>
+      </div>
+      <div class="sc-section">
+        <div class="sc-section-title">选中块操作（非编辑状态下）</div>
+        <table class="sc-table">
+          <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>上移 / 下移选中块</td></tr>
+          <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>删除选中块</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>复制选中块</td></tr>
+          <tr><td><kbd>Escape</kbd></td><td>取消选中</td></tr>
+        </table>
+      </div>
+      <div class="sc-section">
+        <div class="sc-section-title">富文本格式（文本编辑中）</div>
+        <table class="sc-table">
+          <tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>粗体</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>斜体</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>U</kbd></td><td>下划线</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>删除线</td></tr>
+        </table>
+      </div>
+      <div class="sc-section">
+        <div class="sc-section-title">其他</div>
+        <table class="sc-table">
+          <tr><td><kbd>?</kbd></td><td>显示此快捷键帮助</td></tr>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2363,8 +2452,98 @@ window.__pvBidClick = function(bid) {
 })();
 
 /* =========================================================
-   INIT
+   KEYBOARD SHORTCUTS
    ========================================================= */
+
+/* Returns true when the user is actively editing text (so shortcuts should not fire) */
+function _isEditingText() {
+  var ae = document.activeElement;
+  if (!ae || ae === document.body) return false;
+  var tag = ae.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+  if (ae.isContentEditable) return true;
+  return false;
+}
+
+/* Returns true when any modal / dialog overlay is open */
+function _isModalOpen() {
+  return $id('doverlay').classList.contains('open') ||
+         $id('sc-overlay').classList.contains('open');
+}
+
+document.addEventListener('keydown', function(e) {
+  // Ctrl/Meta+D: duplicate selected block (works even without focus restriction)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd') {
+    if (!_isEditingText() && !_isModalOpen() && _sel) {
+      e.preventDefault();
+      duplicateBlock(_sel);
+    }
+    return;
+  }
+
+  // All remaining shortcuts: skip when editing text, dialog open, or modifier held
+  if (_isEditingText()) return;
+  if (_isModalOpen()) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  switch (e.key) {
+    case '1': e.preventDefault(); insertBlock('h1'); break;
+    case '2': e.preventDefault(); insertBlock('h2'); break;
+    case '3': e.preventDefault(); insertBlock('h3'); break;
+    case '4': e.preventDefault(); insertBlock('h4'); break;
+    case '5': e.preventDefault(); insertBlock('h5'); break;
+    case 'p': case 'P': e.preventDefault(); insertBlock('p'); break;
+    case 'q': case 'Q': e.preventDefault(); insertBlock('blockquote'); break;
+    case 'u': case 'U': e.preventDefault(); insertBlock('ul'); break;
+    case 'o': case 'O': e.preventDefault(); insertBlock('ol'); break;
+    case 'c': case 'C': e.preventDefault(); openCodeDialog(); break;
+    case 'i': case 'I': e.preventDefault(); openImgDialog(); break;
+    case 'v': case 'V': e.preventDefault(); openVideoDialog(); break;
+    case 'e': case 'E': e.preventDefault(); openEqDialog('block'); break;
+    case 't': case 'T': e.preventDefault(); openTableDialog(); break;
+    case 'd': case 'D': e.preventDefault(); insertBlock('divider'); break;
+    case 'ArrowUp':
+      if (_sel) { e.preventDefault(); moveBlock(_sel, -1); }
+      break;
+    case 'ArrowDown':
+      if (_sel) { e.preventDefault(); moveBlock(_sel, 1); }
+      break;
+    case 'Delete':
+    case 'Backspace':
+      if (_sel) { e.preventDefault(); deleteBlock(_sel); }
+      break;
+    case 'Escape':
+      setSelected(null);
+      break;
+    case '?':
+      e.preventDefault();
+      openShortcutHelp();
+      break;
+  }
+});
+
+/* =========================================================
+   SHORTCUT HELP MODAL
+   ========================================================= */
+function openShortcutHelp() {
+  $id('sc-overlay').classList.add('open');
+}
+function closeShortcutHelp() {
+  $id('sc-overlay').classList.remove('open');
+}
+
+$id('sc-close').addEventListener('click', closeShortcutHelp);
+$id('sc-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeShortcutHelp();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && $id('sc-overlay').classList.contains('open')) {
+    closeShortcutHelp();
+  }
+});
+$id('btn-shortcuts').addEventListener('click', openShortcutHelp);
+
+
 window.addEventListener('load', function(){
   insertBlock('h1',       {content:'基于轻量卷积神经网络的车牌角点定位方法'});
   insertBlock('authors',  {content:'王某某¹  李某某²\n¹ 某大学电子信息学院  · ² 某研究院智能感知实验室'});
