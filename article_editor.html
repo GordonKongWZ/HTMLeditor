@@ -94,7 +94,12 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 .bdrag:hover{color:var(--ac);background:var(--acl)}
 .bdrag:active{cursor:grabbing}
-.bi.drag-over{outline:2px dashed var(--acm);outline-offset:1px;background:rgba(38,68,186,.04)}
+.bi.drag-before::before,.bi.drag-after::after{
+  content:'';position:absolute;left:0;right:0;height:2px;
+  background:var(--ac);border-radius:1px;z-index:10;pointer-events:none
+}
+.bi.drag-before::before{top:-2px}
+.bi.drag-after::after{bottom:-2px}
 
 /* Block type badge */
 .btbadge{
@@ -1160,7 +1165,9 @@ function _mkDragHandle(bid) {
   h.addEventListener('dragend', function() {
     var el=$id(bid); if(el) el.style.opacity='';
     _draggingId = null;
-    document.querySelectorAll('.bi.drag-over').forEach(function(n){ n.classList.remove('drag-over'); });
+    document.querySelectorAll('.bi.drag-before,.bi.drag-after').forEach(function(n){
+      n.classList.remove('drag-before'); n.classList.remove('drag-after');
+    });
   });
   return h;
 }
@@ -1195,14 +1202,21 @@ function _buildBlockEl(b) {
   el.addEventListener('dragover', function(e) {
     if (!_draggingId || _draggingId === b.id) return;
     e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-    el.classList.add('drag-over');
+    var rect = el.getBoundingClientRect();
+    var before = e.clientY < rect.top + rect.height / 2;
+    el.classList.toggle('drag-before', before);
+    el.classList.toggle('drag-after', !before);
   });
   el.addEventListener('dragleave', function(e) {
-    if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    if (!el.contains(e.relatedTarget)) {
+      el.classList.remove('drag-before'); el.classList.remove('drag-after');
+    }
   });
   el.addEventListener('drop', function(e) {
-    e.preventDefault(); el.classList.remove('drag-over');
-    if (_draggingId && _draggingId !== b.id) reorderBlock(_draggingId, b.id);
+    e.preventDefault();
+    var after = el.classList.contains('drag-after');
+    el.classList.remove('drag-before'); el.classList.remove('drag-after');
+    if (_draggingId && _draggingId !== b.id) reorderBlock(_draggingId, b.id, after);
   });
 
   return el;
@@ -1481,16 +1495,19 @@ function moveBlock(id, dir) {
   syncCode(); schedPv();
 }
 
-function reorderBlock(fromId, toId) {
+function reorderBlock(fromId, toId, after) {
   var fi = _blocks.findIndex(function(b){ return b.id===fromId; });
   if (fi<0) return;
   var moved = _blocks.splice(fi, 1)[0];
   var ti = _blocks.findIndex(function(b){ return b.id===toId; });
   if (ti<0) { _blocks.splice(fi, 0, moved); return; } // rollback if target gone
-  _blocks.splice(ti, 0, moved);
+  _blocks.splice(after ? ti+1 : ti, 0, moved);
   var bl = $id('blist');
   var fromEl = $id(fromId), toEl = $id(toId);
-  if (fromEl && toEl) bl.insertBefore(fromEl, toEl);
+  if (fromEl && toEl) {
+    if (after) bl.insertBefore(fromEl, toEl.nextSibling);
+    else bl.insertBefore(fromEl, toEl);
+  }
   syncCode(); schedPv();
 }
 
