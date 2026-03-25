@@ -783,12 +783,12 @@ var ALIGN_DEFS = [
    BLOCK DEFAULTS
    ========================================================= */
 var DEFS = {
-  h1:         { label:'H1',      def:'一级标题' },
-  h2:         { label:'H2',      def:'二级标题' },
-  h3:         { label:'H3',      def:'三级标题' },
-  h4:         { label:'H4',      def:'四级标题' },
-  h5:         { label:'H5',      def:'五级标题' },
-  p:          { label:'段落',    def:'在此输入段落文字……' },
+  h1:         { label:'H1',      def:'' },
+  h2:         { label:'H2',      def:'' },
+  h3:         { label:'H3',      def:'' },
+  h4:         { label:'H4',      def:'' },
+  h5:         { label:'H5',      def:'' },
+  p:          { label:'段落',    def:'' },
   blockquote: { label:'引用',    def:'引用内容' },
   ul:         { label:'无序列表', def:'列表项 1\n列表项 2\n列表项 3' },
   ol:         { label:'有序列表', def:'步骤一\n步骤二\n步骤三' },
@@ -1159,7 +1159,23 @@ function insertBlock(type, data) {
   // scroll & select after paint
   setTimeout(function() {
     var el = $id(b.id);
-    if (el) { el.scrollIntoView({behavior:'smooth',block:'nearest'}); setSelected(b.id); }
+    if (!el) return;
+    el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    setSelected(b.id);
+    // Auto-enter edit mode for text blocks (p and headings)
+    var AUTO_EDIT = { p:1, h1:1, h2:1, h3:1, h4:1, h5:1 };
+    if (AUTO_EDIT[b.type]) {
+      var beEl = el.querySelector('.be');
+      if (beEl) {
+        beEl.focus();
+        // Place cursor at end (works for empty or non-empty content)
+        var s = window.getSelection();
+        var r = document.createRange();
+        r.selectNodeContents(beEl);
+        r.collapse(false);
+        s.removeAllRanges(); s.addRange(r);
+      }
+    }
   }, 40);
   return b;
 }
