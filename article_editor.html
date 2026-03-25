@@ -1136,8 +1136,19 @@ function makeRichBE(content, placeholder, opts) {
    ========================================================= */
 function insertBlock(type, data) {
   var b = mkBlock(type, data);
-  _blocks.push(b);
-  _appendBlockEl(b);
+  var selIdx = _sel ? _blocks.findIndex(function(x){ return x.id === _sel; }) : -1;
+  if (selIdx >= 0) {
+    _blocks.splice(selIdx + 1, 0, b);
+    var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+    var newEl = _buildBlockEl(b);
+    var selEl = $id(_sel);
+    if (selEl && selEl.nextSibling) selEl.parentNode.insertBefore(newEl, selEl.nextSibling);
+    else if (selEl) selEl.parentNode.appendChild(newEl);
+    else $id('blist').appendChild(newEl);
+  } else {
+    _blocks.push(b);
+    _appendBlockEl(b);
+  }
   _updateCount();
   syncCode();
   schedPv();
