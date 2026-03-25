@@ -1993,7 +1993,7 @@ function _openCtx(e, id) {
   _ctxId=id;
   var m=$id('ctxm'); m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('open');
 }
-document.addEventListener('click', function(){$id('ctxm').classList.remove('open');});
+
 $id('cx-up').addEventListener('click', function(){moveBlock(_ctxId,-1);});
 $id('cx-dn').addEventListener('click', function(){moveBlock(_ctxId, 1);});
 $id('cx-dup').addEventListener('click', function(){duplicateBlock(_ctxId);});
@@ -2016,7 +2016,7 @@ function _openTreeCtx(e, id, nodeWrap) {
     if (r.bottom > window.innerHeight) m.style.top = (y - r.height) + 'px';
   });
 }
-document.addEventListener('click', function(){ $id('ctxm-tree').classList.remove('open'); });
+
 $id('cxt-edit').addEventListener('click', function() {
   if (_treeCtxWrap) _toggleTreeEdit(_treeCtxId, _treeCtxWrap);
 });
@@ -2973,14 +2973,18 @@ function _openPvCtxMenu(bid, x, y) {
   });
 }
 
+function _closeAllCtxMenus() {
+  ['ctxm','ctxm-tree','ctxm-pv'].forEach(function(id){ $id(id).classList.remove('open'); });
+}
+
 var _pvCtxMenuDoc = null;
 function _pvCtxMenuHandler(e) {
+  e.preventDefault(); // always suppress the browser native context menu inside the preview
   var frame = $id('pframe');
   var fdoc = _pvCtxMenuDoc;
   var n = e.target;
   while (n && fdoc && n !== fdoc.body) {
     if (n.getAttribute && n.getAttribute('data-bid')) {
-      e.preventDefault();
       var bid = n.getAttribute('data-bid');
       var r = frame.getBoundingClientRect();
       var s = (frame.offsetWidth > 0 && r.width > 0) ? r.width / frame.offsetWidth : 1;
@@ -2991,23 +2995,33 @@ function _pvCtxMenuHandler(e) {
   }
 }
 
+function _pvClickHandler() {
+  _closeAllCtxMenus();
+}
+
 function _attachPvContextMenu() {
   var frame = $id('pframe');
   try {
     var fdoc = frame.contentDocument || frame.contentWindow.document;
     if (!fdoc) return;
     if (_pvCtxMenuDoc && _pvCtxMenuDoc !== fdoc) {
-      try { _pvCtxMenuDoc.removeEventListener('contextmenu', _pvCtxMenuHandler); } catch(e) {}
+      try {
+        _pvCtxMenuDoc.removeEventListener('contextmenu', _pvCtxMenuHandler);
+        _pvCtxMenuDoc.removeEventListener('click', _pvClickHandler);
+      } catch(e) {}
     }
     if (_pvCtxMenuDoc === fdoc) {
       fdoc.removeEventListener('contextmenu', _pvCtxMenuHandler);
+      fdoc.removeEventListener('click', _pvClickHandler);
     }
     _pvCtxMenuDoc = fdoc;
     fdoc.addEventListener('contextmenu', _pvCtxMenuHandler);
+    fdoc.addEventListener('click', _pvClickHandler);
   } catch(err) {}
 }
 
-document.addEventListener('click', function(){ if ($id('ctxm-pv').classList.contains('open')) $id('ctxm-pv').classList.remove('open'); });
+document.addEventListener('click', function(){ _closeAllCtxMenus(); });
+document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 $id('cxpv-sel').addEventListener('click', function(){ if (_pvCtxId) setSelected(_pvCtxId); });
 $id('cxpv-del').addEventListener('click', function(){ if (_pvCtxId) deleteBlock(_pvCtxId); });
 
