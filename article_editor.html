@@ -307,6 +307,40 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   text-align:center;background:var(--bg1);min-height:38px;font-size:13px;margin-top:5px
 }
 
+/* Paste dialog */
+#paste-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center
+}
+#paste-overlay.open{display:flex}
+#paste-box{
+  background:#fff;border-radius:var(--r12);padding:18px 22px 16px;
+  width:92vw;max-width:700px;max-height:90vh;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+#paste-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#paste-head span{font-size:14px;font-weight:700;color:var(--t0)}
+#paste-close{
+  background:none;border:none;cursor:pointer;font-size:14px;
+  color:var(--t2);padding:2px 6px;border-radius:var(--r4);line-height:1
+}
+#paste-close:hover{background:var(--bg1);color:var(--t0)}
+#paste-preview-wrap{
+  flex:1;min-height:200px;border:1px solid var(--bm);
+  border-radius:var(--r8);overflow:hidden;background:var(--bg0)
+}
+#paste-iframe{width:100%;height:100%;border:none;display:block}
+#paste-code-wrap{
+  flex-shrink:0;height:130px;display:flex;flex-direction:column;gap:4px
+}
+#paste-code-label{font-size:11px;color:var(--t2)}
+#paste-code{
+  flex:1;resize:none;border:1px solid var(--bm);
+  border-radius:var(--r8);padding:7px 10px;font-family:var(--fm);
+  font-size:11px;color:var(--t1);background:var(--bg1);outline:none;overflow:auto
+}
+
 .edit-btn{
   display:inline-block;margin-top:4px;padding:3px 9px;border:1px dashed var(--bm);
   border-radius:var(--r4);background:transparent;font-size:11px;color:var(--t2);cursor:pointer
@@ -680,6 +714,27 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       </div>
     </div>
     <div id="sc-body"></div>
+  </div>
+</div>
+
+<!-- Paste Dialog -->
+<div id="paste-overlay">
+  <div id="paste-box">
+    <div id="paste-head">
+      <span>📋 粘贴内容预览</span>
+      <button id="paste-close">✕</button>
+    </div>
+    <div id="paste-preview-wrap">
+      <iframe id="paste-iframe" sandbox="allow-same-origin"></iframe>
+    </div>
+    <div id="paste-code-wrap">
+      <div id="paste-code-label">将插入 <span id="paste-block-count">0</span> 个块</div>
+      <textarea id="paste-code" readonly spellcheck="false"></textarea>
+    </div>
+    <div class="dbtns">
+      <button class="dcancel" id="paste-cancel">取消</button>
+      <button class="dconfirm" id="paste-insert">插入</button>
+    </div>
   </div>
 </div>
 
@@ -1809,6 +1864,161 @@ function confirmInfobox(){
 }
 
 /* =========================================================
+   PASTE DIALOG
+   ========================================================= */
+var _pasteBlocks = [];
+
+/* Strip script tags and event-handler attributes from an HTML string */
+function _sanitizeHtml(html) {
+  if (!html) return '';
+  var doc = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
+  doc.querySelectorAll('script,noscript').forEach(function(el){ el.remove(); });
+  doc.querySelectorAll('*').forEach(function(el){
+    Array.prototype.slice.call(el.attributes).forEach(function(attr){
+      if (/^on/i.test(attr.name)) el.removeAttribute(attr.name);
+      if ((attr.name === 'href' || attr.name === 'src' || attr.name === 'action') &&
+          /^javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+    });
+  });
+  return doc.body.innerHTML;
+}
+
+/* Parse arbitrary HTML body into blocks */
+function _parseGenericHtmlToBlocks(container) {
+  var children = Array.prototype.slice.call(container.children);
+  /* Unwrap single-div wrapper (e.g. clipboard often wraps in <div>) */
+  if (children.length === 1 && children[0].tagName.toLowerCase() === 'div') {
+    var inner = _parseGenericHtmlToBlocks(children[0]);
+    if (inner.length) return inner;
+  }
+  var blocks = [];
+  children.forEach(function(el) {
+    var tag = el.tagName.toLowerCase();
+    if (tag === 'hr') {
+      blocks.push(mkBlock('divider', {}));
+    } else if (/^h[1-5]$/.test(tag)) {
+      var txt = el.textContent.trim();
+      if (txt) blocks.push(mkBlock(tag, { content: txt }));
+    } else if (tag === 'p') {
+      var content = _sanitizeHtml(el.innerHTML.trim());
+      if (content) blocks.push(mkBlock('p', { content: content, align: el.style.textAlign || '' }));
+    } else if (tag === 'blockquote') {
+      var bqp = el.querySelector('p');
+      blocks.push(mkBlock('blockquote', { content: _sanitizeHtml(bqp ? bqp.innerHTML : el.innerHTML) }));
+    } else if (tag === 'ul') {
+      var uls = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); }).filter(Boolean);
+      if (uls.length) blocks.push(mkBlock('ul', { content: uls.join('\n') }));
+    } else if (tag === 'ol') {
+      var ols = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); }).filter(Boolean);
+      if (ols.length) blocks.push(mkBlock('ol', { content: ols.join('\n') }));
+    } else if (tag === 'pre') {
+      var codeEl = el.querySelector('code') || el;
+      var langMatch = codeEl.className.match(/language-(\w+)/);
+      blocks.push(mkBlock('codeblock', { lang: langMatch ? langMatch[1] : '', content: codeEl.textContent }));
+    } else if (tag === 'table') {
+      var headers = Array.prototype.slice.call(el.querySelectorAll('thead th')).map(function(th){ return th.textContent.trim(); });
+      if (!headers.length) {
+        var firstRow = el.querySelector('tr');
+        if (firstRow) headers = Array.prototype.slice.call(firstRow.querySelectorAll('th')).map(function(c){ return c.textContent.trim(); });
+      }
+      var rows = Array.prototype.slice.call(el.querySelectorAll('tbody tr')).map(function(tr){
+        return Array.prototype.slice.call(tr.querySelectorAll('td')).map(function(td){ return td.textContent.trim(); });
+      });
+      if (!rows.length) {
+        var allRows = Array.prototype.slice.call(el.querySelectorAll('tr'));
+        rows = allRows.slice(headers.length ? 1 : 0).map(function(tr){
+          return Array.prototype.slice.call(tr.querySelectorAll('td,th')).map(function(td){ return td.textContent.trim(); });
+        });
+      }
+      blocks.push(mkBlock('table', { headers: headers, rows: rows, caption: '', tablenum: '' }));
+    } else if (tag === 'div' || tag === 'section' || tag === 'article' || tag === 'main') {
+      var sub = _parseGenericHtmlToBlocks(el);
+      if (sub.length) blocks = blocks.concat(sub);
+      else { var rh = _sanitizeHtml(el.outerHTML.trim()); if (rh) blocks.push(mkBlock('raw', { html: rh })); }
+    } else {
+      var rh2 = _sanitizeHtml(el.outerHTML.trim());
+      if (rh2) blocks.push(mkBlock('raw', { html: rh2 }));
+    }
+  });
+  return blocks;
+}
+
+/* Detect whether htmlStr has meaningful markup vs plain text */
+function _hasHtmlMarkup(htmlStr) {
+  return /<(h[1-6]|p|ul|ol|li|blockquote|table|pre|code|div|section|hr)\b/i.test(htmlStr);
+}
+
+/* Parse pasted clipboard data (html + plain text) to blocks */
+function _parsePasteContent(html, text) {
+  if (html && html.trim() && _hasHtmlMarkup(html)) {
+    /* Try article format first */
+    var artBlocks = parseHtmlToBlocks(html);
+    if (artBlocks && artBlocks.length) return artBlocks;
+    /* Fall back to generic HTML parser */
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var genBlocks = _parseGenericHtmlToBlocks(doc.body);
+    if (genBlocks.length) return genBlocks;
+  }
+  /* Plain text: split by newline → p blocks */
+  var src = (text || '').trim();
+  if (!src) return [];
+  return src.split('\n')
+    .map(function(line){ return line.trim(); })
+    .filter(Boolean)
+    .map(function(line){ return mkBlock('p', { content: line }); });
+}
+
+function openPasteDlg(html, text) {
+  _pasteBlocks = _parsePasteContent(html || '', text || '');
+  if (!_pasteBlocks.length) return;
+  /* Build preview HTML – use a simple wrapper without external scripts for the sandboxed iframe */
+  var previewBody = _pasteBlocks.map(b2html).join('\n\n');
+  var previewHtml = wrapHTML(previewBody).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  /* Populate iframe via srcdoc */
+  $id('paste-iframe').srcdoc = previewHtml;
+  /* Populate code area */
+  $id('paste-code').value = _pasteBlocks.map(b2html).join('\n\n');
+  $id('paste-block-count').textContent = _pasteBlocks.length;
+  $id('paste-overlay').classList.add('open');
+}
+
+function closePasteDlg() {
+  $id('paste-overlay').classList.remove('open');
+  _pasteBlocks = [];
+}
+
+function confirmPaste() {
+  if (!_pasteBlocks.length) { closePasteDlg(); return; }
+  var bl = $id('blist');
+  var selIdx = _sel ? _blocks.findIndex(function(b){ return b.id === _sel; }) : -1;
+  /* Remove empty-hint if present */
+  var hint = $id('ehint'); if (hint) hint.remove();
+  _pasteBlocks.forEach(function(src, i) {
+    var nb = JSON.parse(JSON.stringify(src));
+    nb.id = uid();
+    var newEl = _buildBlockEl(nb);
+    if (selIdx >= 0) {
+      _blocks.splice(selIdx + 1 + i, 0, nb);
+      /* Insert in DOM after last inserted element */
+      var refId = i === 0 ? _sel : _blocks[selIdx + i].id;
+      var refEl = $id(refId);
+      if (refEl && refEl.nextSibling) refEl.parentNode.insertBefore(newEl, refEl.nextSibling);
+      else bl.appendChild(newEl);
+    } else {
+      _blocks.push(nb);
+      bl.appendChild(newEl);
+    }
+  });
+  _updateCount(); syncCode(); schedPv();
+  closePasteDlg();
+}
+
+$id('paste-cancel').addEventListener('click', closePasteDlg);
+$id('paste-close').addEventListener('click', closePasteDlg);
+$id('paste-insert').addEventListener('click', confirmPaste);
+$id('paste-overlay').addEventListener('click', function(e){ if (e.target === this) closePasteDlg(); });
+
+/* =========================================================
    TOOLBAR WIRING
    ========================================================= */
 document.querySelectorAll('[data-insert]').forEach(function(btn){
@@ -2659,15 +2869,30 @@ function _isEditingText() {
 /* Returns true when any modal / dialog overlay is open */
 function _isModalOpen() {
   return $id('doverlay').classList.contains('open') ||
-         $id('sc-overlay').classList.contains('open');
+         $id('sc-overlay').classList.contains('open') ||
+         $id('paste-overlay').classList.contains('open');
 }
+
+/* Intercept paste (Ctrl+V) when not editing text */
+document.addEventListener('paste', function(e) {
+  if (_isEditingText()) return; // let native paste handle text fields
+  if ($id('doverlay').classList.contains('open')) return; // existing dialog has focus
+  if ($id('sc-overlay').classList.contains('open')) return;
+  if ($id('paste-overlay').classList.contains('open')) return;
+  e.preventDefault();
+  var html = e.clipboardData ? e.clipboardData.getData('text/html') : '';
+  var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  if (!html && !text) return;
+  openPasteDlg(html, text);
+});
 
 document.addEventListener('keydown', function(e) {
   // Capture mode takes priority over everything
   if (_scCapturing) { _scHandleCapture(e); return; }
 
-  // Escape: close shortcut modal first; otherwise deselect block (when not editing)
+  // Escape: close shortcut modal first; otherwise close paste dialog; then deselect block
   if (e.key === 'Escape') {
+    if ($id('paste-overlay').classList.contains('open')) { closePasteDlg(); return; }
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
     if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
     return;
