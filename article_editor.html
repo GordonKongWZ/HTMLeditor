@@ -176,16 +176,16 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #rhandle:hover::before{background:var(--acm)}
 
 /* Code editor */
-#cewrap{display:flex;flex-direction:column;overflow:hidden;background:var(--bge);min-height:0;height:200px}
+#cewrap{display:flex;flex-direction:column;overflow:hidden;background:#fff;min-height:0;height:200px}
 #cehead{
-  display:flex;align-items:center;gap:7px;padding:4px 12px;background:#16162a;
-  border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0
+  display:flex;align-items:center;gap:7px;padding:4px 12px;background:var(--bg1);
+  border-bottom:1px solid var(--bl);flex-shrink:0
 }
-#cehead span{font-size:10px;color:rgba(255,255,255,.4);font-family:var(--fm)}
+#cehead span{font-size:10px;color:var(--t2);font-family:var(--fm)}
 .dot{width:8px;height:8px;border-radius:50%}
 .dr{background:#ff5f57}.dy{background:#ffbd2e}.dg{background:#28c840}
 #ctarea{
-  flex:1;background:var(--bge);color:#cdd6f4;border:none;outline:none;
+  flex:1;background:#fff;color:var(--t0);border:none;outline:none;
   padding:12px 14px;font-family:var(--fm);font-size:12px;line-height:1.65;
   resize:none;overflow-y:auto;white-space:pre;tab-size:2;min-height:0
 }
@@ -359,6 +359,84 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .abtn svg{width:11px;height:11px;flex-shrink:0}
 .abtn:hover{background:var(--acl);color:var(--ac);border-color:var(--acb)}
 .abtn.on{background:var(--ac);color:#fff;border-color:var(--acd)}
+
+/* ── Code editor tab buttons ── */
+.ce-tab{padding:2px 8px;border:none;background:transparent;color:var(--t2);font-size:10px;font-family:var(--fm);cursor:pointer;border-radius:var(--r4);transition:all .1s;white-space:nowrap;line-height:1}
+.ce-tab:hover{background:var(--bg2);color:var(--t0)}
+.ce-tab.act{background:var(--bg2);color:var(--t0);font-weight:600}
+
+/* ── Tree view pane ── */
+#ce-tree-pane{flex:1;overflow-y:auto;background:#fff;padding:4px 3px;min-height:0}
+.tv-empty{font-size:11px;color:var(--t2);text-align:center;padding:20px 10px;font-family:var(--fm)}
+
+/* Tree block node */
+.tn{position:relative;margin-bottom:1px}
+.tn-hdr{display:flex;align-items:center;gap:3px;padding:2px 4px 2px 3px;border-radius:var(--r4);cursor:pointer;min-height:22px;transition:background .08s;user-select:none}
+.tn-hdr:hover{background:var(--bg1)}
+.tn-hdr.tn-sel{background:var(--acl)!important}
+.tn-hdr.tn-sel:hover{background:var(--acb)!important}
+
+/* Toggle arrow */
+.tn-tog{width:14px;height:14px;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:9px;flex-shrink:0;border-radius:2px;transition:color .1s}
+.tn-tog.clickable{cursor:pointer}
+.tn-tog.clickable:hover{color:var(--t0);background:var(--bg2)}
+
+/* Block type badge */
+.tn-badge{font-size:9px;font-family:var(--fm);padding:1px 4px;border-radius:2px;background:var(--bg2);color:var(--t1);flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;line-height:1.4}
+
+/* Tag label */
+.tn-tag{font-family:var(--fm);font-size:10px;border-radius:3px;padding:1px 5px;flex-shrink:0;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.tt-h{background:rgba(38,68,186,.1);color:#2644ba}
+.tt-p{background:rgba(80,80,80,.08);color:#555}
+.tt-div{background:rgba(120,60,220,.1);color:#6b2fba}
+.tt-fig{background:rgba(30,140,80,.1);color:#0e7a40}
+.tt-list{background:rgba(200,100,30,.1);color:#b05a10}
+.tt-hr{background:rgba(80,80,80,.08);color:#777}
+.tt-def{background:rgba(60,60,60,.08);color:#555}
+
+/* Text preview */
+.tn-txt{font-size:10px;color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--fm);min-width:0}
+
+/* Hover action buttons */
+.tn-acts{display:none;align-items:center;gap:1px;flex-shrink:0;margin-left:2px}
+.tn-hdr:hover .tn-acts{display:flex}
+.tn-act{width:17px;height:17px;border:none;background:transparent;color:var(--t2);cursor:pointer;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .1s;padding:0;flex-shrink:0}
+.tn-act:hover{background:var(--bg2);color:var(--t0)}
+.tn-a-del:hover{background:rgba(220,50,50,.1);color:#b91c1c}
+.tn-a-ins:hover{background:rgba(30,140,80,.1);color:#0e7a40}
+.tn-a-edit:hover{background:var(--acl);color:var(--ac)}
+
+/* Inner element tree (expanded block children) */
+.tn-children{padding-left:13px;border-left:1px solid var(--bl);margin-left:12px}
+.tn-inner-node{margin-bottom:1px}
+.tn-inode-hdr{display:flex;align-items:center;gap:3px;padding:1px 3px;min-height:17px}
+.tn-inode-tag{font-family:var(--fm);font-size:9px;padding:0 3px;border-radius:2px;background:var(--bg2);color:var(--t1);flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.45}
+.tn-inode-txt{font-size:9px;color:var(--t2);font-family:var(--fm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-style:italic}
+
+/* Inline HTML editor */
+.tn-edit-wrap{padding:3px 5px 6px;background:var(--bg1);border-radius:0 0 var(--r4) var(--r4);margin-top:1px;border-top:1px solid var(--bl)}
+.tn-edit-wrap textarea{width:100%;box-sizing:border-box;background:#fff;color:var(--t0);border:1px solid var(--bm);border-radius:var(--r4);padding:6px 8px;font-family:var(--fm);font-size:11px;line-height:1.55;resize:vertical;min-height:72px;max-height:220px;outline:none;tab-size:2;white-space:pre}
+.tn-edit-wrap textarea:focus{border-color:var(--acm);box-shadow:0 0 0 2px rgba(38,68,186,.1)}
+.tn-edit-btns{display:flex;gap:5px;margin-top:5px}
+.tn-edit-save{padding:3px 11px;border:none;border-radius:var(--r4);background:var(--ac);color:#fff;font-size:11px;font-family:var(--fs);cursor:pointer;transition:background .1s}
+.tn-edit-save:hover{background:var(--acd)}
+.tn-edit-cancel{padding:3px 10px;border:1px solid var(--bm);border-radius:var(--r4);background:transparent;color:var(--t1);font-size:11px;font-family:var(--fs);cursor:pointer;transition:all .1s}
+.tn-edit-cancel:hover{border-color:var(--acm);color:var(--t0)}
+.tn-edit-info{font-size:10px;margin-top:3px;font-family:var(--fm);color:#b91c1c}
+
+/* Insert panel */
+.tn-ins-wrap{padding:3px 5px 7px;background:var(--bg1);border-radius:0 0 var(--r4) var(--r4);margin-top:1px;border-top:1px solid var(--bl)}
+.tn-ins-label{font-size:9px;color:var(--t2);margin-bottom:5px;font-family:var(--fm)}
+.tn-ins-btns{display:flex;flex-wrap:wrap;gap:3px}
+.tn-ins-btn{padding:2px 7px;border:1px solid var(--bm);background:#fff;color:var(--t1);border-radius:3px;font-size:9px;font-family:var(--fm);cursor:pointer;transition:all .1s}
+.tn-ins-btn:hover{background:var(--acl);border-color:var(--acm);color:var(--ac)}
+
+/* Tree context menu */
+#ctxm-tree{
+  display:none;position:fixed;z-index:2000;background:#fff;border:1px solid var(--bm);
+  border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:140px
+}
+#ctxm-tree.open{display:block}
 </style>
 </head>
 <body>
@@ -441,9 +519,12 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
       <div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div>
       <span>HTML 代码 · 实时预览</span>
       <div style="flex:1"></div>
-      <span id="cchars" style="font-size:10px;color:rgba(255,255,255,.2)">0 chars</span>
+      <button class="ce-tab act" id="ce-tab-tree" aria-label="树形视图">🌲 树形</button>
+      <button class="ce-tab" id="ce-tab-html" aria-label="HTML 视图">◁▷ HTML</button>
+      <span id="cchars" style="font-size:10px;color:var(--t2);margin-left:6px">0 chars</span>
     </div>
-    <textarea id="ctarea" spellcheck="false" placeholder="<!-- 插入组件后代码将在此显示，可直接编辑 -->"></textarea>
+    <div id="ce-tree-pane"><div class="tv-empty">暂无内容</div></div>
+    <textarea id="ctarea" spellcheck="false" style="display:none" placeholder="<!-- 插入组件后代码将在此显示，可直接编辑 -->"></textarea>
   </div>
 </div>
 
@@ -487,7 +568,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   </div>
 </div>
 
-<!-- Context Menu -->
+<!-- Context Menu (editor area) -->
 <div id="ctxm">
   <div class="cxi" id="cx-up">↑ 上移</div>
   <div class="cxi" id="cx-dn">↓ 下移</div>
@@ -495,6 +576,20 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   <div class="cxi" id="cx-dup">⧉ 复制块</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
+</div>
+
+<!-- Context Menu (tree view) -->
+<div id="ctxm-tree">
+  <div class="cxi" id="cxt-edit">✎ 编辑 HTML</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxt-up">↑ 上移</div>
+  <div class="cxi" id="cxt-dn">↓ 下移</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxt-dup">⧉ 复制块</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxt-ins">＋ 在下方插入</div>
+  <div class="cxs"></div>
+  <div class="cxi danger" id="cxt-del">✕ 删除</div>
 </div>
 
 <!-- Floating Format Bar (rich-text blocks) -->
@@ -535,6 +630,10 @@ var _editingBlock = null;
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 var _draggingId = null; // block id being dragged for reorder
+var _treeMode = true; // true = tree view; false = raw HTML textarea
+var _treeExpanded = {}; // bid → bool: whether that block is expanded in tree
+var _syncTreeTimer = null; // debounce timer for tree rebuild
+var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block tree
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -571,6 +670,7 @@ var DEFS = {
   codeblock:  { label:'代码块',  def:'// 代码' },
   refs:       { label:'参考文献',def:'1. 作者, "标题." 期刊, 年份.' },
   divider:    { label:'分割线',  def:'' },
+  raw:        { label:'自定义',  def:'<div>自定义 HTML</div>' },
 };
 
 function mkBlock(type, data) {
@@ -938,6 +1038,17 @@ function _buildInner(inner, b) {
       inner.appendChild(wrap);
       break;
     }
+    case 'raw': {
+      var rawWrap = mkDiv('cbx'); inner.appendChild(rawWrap);
+      var rawHd = mkDiv('cbxh');
+      rawHd.innerHTML = '<span style="color:var(--ac);font-size:10px">自定义 HTML</span>';
+      rawWrap.appendChild(rawHd);
+      var rawPre = mkDiv('be');
+      rawPre.style.cssText = 'font-family:var(--fm);font-size:10px;padding:6px 9px;overflow:auto;white-space:pre;max-height:80px;color:var(--t1);line-height:1.5';
+      rawPre.textContent = (b.data.html || '<div></div>').substring(0, 300);
+      rawWrap.appendChild(rawPre);
+      break;
+    }
     default: {
       addBE(b.content, '', function(v){ b.content=v; });
     }
@@ -960,6 +1071,12 @@ function setSelected(id) {
   _sel = id;
   if (id) { var el=$id(id); if(el) el.classList.add('sel'); }
   if (id) { _pendingScrollBid = id; scrollPreviewToBlock(id); scrollEditorToBlock(id); _scrollCodeToBlock(id); }
+  // Sync tree selection highlight
+  document.querySelectorAll('#ce-tree-pane .tn-hdr.tn-sel').forEach(function(h){ h.classList.remove('tn-sel'); });
+  if (id) {
+    var tnEl = $id('tn-' + id);
+    if (tnEl) { var tnHdr = tnEl.querySelector('.tn-hdr'); if (tnHdr) tnHdr.classList.add('tn-sel'); }
+  }
 }
 
 /* =========================================================
@@ -1030,6 +1147,7 @@ function syncCode() {
   var full = wrapHTML(body);
   $id('ctarea').value = full;
   $id('cchars').textContent = full.length + ' chars';
+  syncTree();
 }
 
 function b2html(b) {
@@ -1104,6 +1222,11 @@ function b2html(b) {
     }
     case 'divider':
       return '  <hr'+bid+' style="border:none;border-top:0.5px solid var(--color-border-tertiary);margin:2rem 0;">';
+    case 'raw': {
+      var rh = (b.data.html || '<div></div>').trim();
+      // inject data-bid into the first opening tag
+      return '  ' + rh.replace(/(<[a-zA-Z][a-zA-Z0-9]*)(\s|\/?>)/, '$1 data-bid="'+b.id+'"$2');
+    }
     default:
       return '  <!-- '+b.type+' -->';
   }
@@ -1261,6 +1384,9 @@ function parseHtmlToBlocks(htmlStr) {
       }
     }
 
+    // Fallback: unrecognized element → raw block (preserves custom HTML)
+    var rawHtml = el.outerHTML.replace(/\s*data-bid="[^"]*"/g, '').trim();
+    blocks.push(mkBlock('raw', { html: rawHtml }));
     i++;
   }
   return blocks;
@@ -1282,6 +1408,7 @@ function applyCodeToBlocks() {
   _blocks.forEach(function(b) { _appendBlockEl(b); });
   _updateCount();
   _syncingFromCode = false;
+  syncTree();
 }
 
 /* =========================================================
@@ -1351,6 +1478,12 @@ function scrollEditorToBlock(id) {
 
 function _scrollCodeToBlock(id) {
   if (!id) return;
+  if (_treeMode) {
+    // In tree mode: scroll the corresponding tree node into view
+    var tnEl = $id('tn-' + id);
+    if (tnEl) tnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
   var ta = $id('ctarea');
   if (document.activeElement === ta) return; // user is typing in code pane; don't jump
   var val = ta.value;
@@ -1413,6 +1546,37 @@ $id('cx-up').addEventListener('click', function(){moveBlock(_ctxId,-1);});
 $id('cx-dn').addEventListener('click', function(){moveBlock(_ctxId, 1);});
 $id('cx-dup').addEventListener('click', function(){duplicateBlock(_ctxId);});
 $id('cx-del').addEventListener('click', function(){deleteBlock(_ctxId);});
+
+/* =========================================================
+   TREE VIEW CONTEXT MENU
+   ========================================================= */
+var _treeCtxId = null, _treeCtxWrap = null;
+function _openTreeCtx(e, id, nodeWrap) {
+  _treeCtxId = id; _treeCtxWrap = nodeWrap;
+  var m = $id('ctxm-tree');
+  var x = e.clientX, y = e.clientY;
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  m.classList.add('open');
+  // keep within viewport
+  requestAnimationFrame(function() {
+    var r = m.getBoundingClientRect();
+    if (r.right > window.innerWidth) m.style.left = (x - r.width) + 'px';
+    if (r.bottom > window.innerHeight) m.style.top = (y - r.height) + 'px';
+  });
+}
+document.addEventListener('click', function(){ $id('ctxm-tree').classList.remove('open'); });
+$id('cxt-edit').addEventListener('click', function() {
+  if (_treeCtxWrap) _toggleTreeEdit(_treeCtxId, _treeCtxWrap);
+});
+$id('cxt-up').addEventListener('click', function(){ moveBlock(_treeCtxId, -1); });
+$id('cxt-dn').addEventListener('click', function(){ moveBlock(_treeCtxId,  1); });
+$id('cxt-dup').addEventListener('click', function(){ duplicateBlock(_treeCtxId); });
+$id('cxt-ins').addEventListener('click', function() {
+  if (_treeCtxWrap) _toggleTreeInsert(_treeCtxId, _treeCtxWrap);
+});
+$id('cxt-del').addEventListener('click', function(){
+  if (confirm('确定删除此块？')) deleteBlock(_treeCtxId);
+});
 
 /* =========================================================
    DIALOGS
@@ -1622,7 +1786,435 @@ $id('btn-clear').addEventListener('click',function(){
   $id('blist').innerHTML=''; _updateCount();
   $id('ctarea').value=''; $id('cchars').textContent='0 chars';
   $id('pframe').src='about:blank';
+  syncTree();
 });
+
+/* =========================================================
+   TREE VIEW
+   ========================================================= */
+
+/* Switch between tree view and raw HTML textarea */
+function switchCeTab(mode) {
+  _treeMode = (mode === 'tree');
+  $id('ce-tree-pane').style.display = _treeMode ? '' : 'none';
+  $id('ctarea').style.display = _treeMode ? 'none' : '';
+  $id('ce-tab-tree').classList.toggle('act', _treeMode);
+  $id('ce-tab-html').classList.toggle('act', !_treeMode);
+  if (_treeMode) _doSyncTree();
+}
+
+/* Debounced tree rebuild — called from syncCode() */
+function syncTree() {
+  if (!_treeMode) return;
+  clearTimeout(_syncTreeTimer);
+  _syncTreeTimer = setTimeout(_doSyncTree, 80);
+}
+
+/* Rebuild the tree pane from _blocks */
+function _doSyncTree() {
+  if (!_treeMode) return;
+  var pane = $id('ce-tree-pane');
+  if (!pane) return;
+  pane.innerHTML = '';
+  if (!_blocks.length) {
+    var emp = document.createElement('div');
+    emp.className = 'tv-empty';
+    emp.textContent = '暂无内容';
+    pane.appendChild(emp);
+    return;
+  }
+  _blocks.forEach(function(b) { pane.appendChild(_buildTreeNode(b)); });
+}
+
+/* Determine CSS color class for an HTML tag name */
+function _tagCls(tagName) {
+  var t = (tagName || '').toLowerCase();
+  if (/^h[1-6]$/.test(t)) return 'tt-h';
+  if (t === 'p' || t === 'blockquote') return 'tt-p';
+  if (t === 'div') return 'tt-div';
+  if (t === 'figure') return 'tt-fig';
+  if (t === 'ul' || t === 'ol') return 'tt-list';
+  if (t === 'hr') return 'tt-hr';
+  return 'tt-def';
+}
+
+/* Format a display label like "<div.abstract-box>" */
+function _tagLabel(el) {
+  var tag = el.tagName.toLowerCase();
+  var s = '<' + tag;
+  var cls = el.getAttribute('class');
+  if (cls) {
+    var parts = cls.split(/\s+/).filter(Boolean);
+    // Show at most 2 classes to keep the label compact
+    s += '.' + parts.slice(0, 2).join('.');
+    if (parts.length > 2) s += '…';
+  }
+  s += '>';
+  return s;
+}
+
+/* Whether a block type has inner child structure worth showing */
+function _blockHasChildren(type) {
+  return ['abstract','infobox','img','video','table','codeblock','refs',
+          'ul','ol','blockquote','keywords','raw'].indexOf(type) >= 0;
+}
+
+/* Derive the root tag label from block type without parsing HTML */
+function _blockTagDisplay(b) {
+  switch (b.type) {
+    case 'h1': return { tag:'h1', cls:'', color:'tt-h' };
+    case 'h2': return { tag:'h2', cls:'', color:'tt-h' };
+    case 'h3': return { tag:'h3', cls:'', color:'tt-h' };
+    case 'h4': return { tag:'h4', cls:'', color:'tt-h' };
+    case 'h5': return { tag:'h5', cls:'', color:'tt-h' };
+    case 'p':  return { tag:'p',  cls:'', color:'tt-p' };
+    case 'blockquote': return { tag:'blockquote', cls:'', color:'tt-p' };
+    case 'ul': return { tag:'ul', cls:'', color:'tt-list' };
+    case 'ol': return { tag:'ol', cls:'', color:'tt-list' };
+    case 'abstract':  return { tag:'div', cls:'abstract-box', color:'tt-div' };
+    case 'authors':   return { tag:'p',   cls:'paper-authors', color:'tt-p' };
+    case 'keywords':  return { tag:'div', cls:'kw-row', color:'tt-div' };
+    case 'infobox':   return { tag:'div', cls:'ib', color:'tt-div' };
+    case 'eq':        return { tag:'div', cls:'eq', color:'tt-div' };
+    case 'eq-inline': return { tag:'p',   cls:'', color:'tt-p' };
+    case 'img':       return { tag:'figure', cls:'af', color:'tt-fig' };
+    case 'video':     return { tag:'figure', cls:'vw', color:'tt-fig' };
+    case 'table':     return { tag:'div', cls:'tw', color:'tt-div' };
+    case 'codeblock': return { tag:'div', cls:'cbw', color:'tt-div' };
+    case 'refs':      return { tag:'div', cls:'refs', color:'tt-div' };
+    case 'divider':   return { tag:'hr',  cls:'', color:'tt-hr' };
+    case 'raw':       return { tag:'?',   cls:'自定义', color:'tt-def' };
+    default:          return { tag:'div', cls:'', color:'tt-def' };
+  }
+}
+
+/* Build one top-level tree node for a block */
+function _buildTreeNode(b) {
+  var wrap = document.createElement('div');
+  wrap.className = 'tn';
+  wrap.id = 'tn-' + b.id;
+
+  var expanded = !!_treeExpanded[b.id];
+  var td = _blockTagDisplay(b);
+  var hasChildren = _blockHasChildren(b.type);
+
+  /* — Header row — */
+  var hdr = document.createElement('div');
+  hdr.className = 'tn-hdr' + (_sel === b.id ? ' tn-sel' : '');
+
+  /* Toggle arrow */
+  var tog = document.createElement('span');
+  tog.className = 'tn-tog' + (hasChildren ? ' clickable' : '');
+  tog.textContent = hasChildren ? (expanded ? '▼' : '▶') : '·';
+  if (hasChildren) {
+    (function(bid) {
+      tog.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _treeExpanded[bid] = !_treeExpanded[bid];
+        var b2 = _blocks.find(function(x){ return x.id === bid; });
+        if (b2) {
+          var tnEl = $id('tn-' + bid);
+          if (tnEl) tnEl.parentNode.replaceChild(_buildTreeNode(b2), tnEl);
+        }
+      });
+    })(b.id);
+  }
+  hdr.appendChild(tog);
+
+  /* Block type badge */
+  var badge = document.createElement('span');
+  badge.className = 'tn-badge';
+  badge.textContent = b.label;
+  hdr.appendChild(badge);
+
+  /* Tag label */
+  var tagSpan = document.createElement('span');
+  tagSpan.className = 'tn-tag ' + td.color;
+  tagSpan.textContent = '<' + td.tag + (td.cls ? '.' + td.cls : '') + '>';
+  hdr.appendChild(tagSpan);
+
+  /* Content preview */
+  var preview = (b.content || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  if (!preview && b.type === 'raw') preview = (b.data.html || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  if (preview.length > 50) preview = preview.substring(0, 50) + '…';
+  if (preview) {
+    var txtSpan = document.createElement('span');
+    txtSpan.className = 'tn-txt';
+    txtSpan.textContent = preview;
+    hdr.appendChild(txtSpan);
+  }
+
+  /* Action buttons (visible on hover) */
+  var acts = document.createElement('span');
+  acts.className = 'tn-acts';
+
+  /* Edit button */
+  var editBtn = document.createElement('button');
+  editBtn.className = 'tn-act tn-a-edit';
+  editBtn.title = '编辑 HTML';
+  editBtn.innerHTML = '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" width="9" height="9"><path d="M6.5 1L9 3.5 4 8.5l-3 .5.5-3z"/></svg>';
+  (function(bid, nodeWrap) {
+    editBtn.addEventListener('click', function(e) { e.stopPropagation(); _toggleTreeEdit(bid, nodeWrap); });
+  })(b.id, wrap);
+  acts.appendChild(editBtn);
+
+  /* Insert-below button */
+  var insBtn = document.createElement('button');
+  insBtn.className = 'tn-act tn-a-ins';
+  insBtn.title = '在下方插入';
+  insBtn.innerHTML = '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" width="9" height="9"><line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/></svg>';
+  (function(bid, nodeWrap) {
+    insBtn.addEventListener('click', function(e) { e.stopPropagation(); _toggleTreeInsert(bid, nodeWrap); });
+  })(b.id, wrap);
+  acts.appendChild(insBtn);
+
+  /* Delete button */
+  var delBtn = document.createElement('button');
+  delBtn.className = 'tn-act tn-a-del';
+  delBtn.title = '删除';
+  delBtn.innerHTML = '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" width="9" height="9"><line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/></svg>';
+  (function(bid) {
+    delBtn.addEventListener('click', function(e) { e.stopPropagation(); if (confirm('确定删除此块？')) deleteBlock(bid); });
+  })(b.id);
+  acts.appendChild(delBtn);
+
+  hdr.appendChild(acts);
+
+  /* Click header → select block */
+  (function(bid, h, nodeWrap) {
+    h.addEventListener('click', function() { setSelected(bid); });
+    h.addEventListener('dblclick', function(e) { e.stopPropagation(); _toggleTreeEdit(bid, nodeWrap); });
+    h.addEventListener('contextmenu', function(e) { e.preventDefault(); _openTreeCtx(e, bid, nodeWrap); });
+  })(b.id, hdr, wrap);
+
+  wrap.appendChild(hdr);
+
+  /* Expanded inner HTML structure */
+  if (hasChildren && expanded) {
+    var rootEl = null;
+    try {
+      var blockHtml = b2html(b);
+      var tmpDoc = new DOMParser().parseFromString('<x>' + blockHtml.trim() + '</x>', 'text/html');
+      rootEl = tmpDoc.querySelector('x > *') || null;
+    } catch(e) {}
+    if (rootEl) {
+      var childWrap = document.createElement('div');
+      childWrap.className = 'tn-children';
+      _renderInnerChildren(rootEl, childWrap, 0);
+      wrap.appendChild(childWrap);
+    }
+  }
+
+  return wrap;
+}
+
+/* Recursively render child DOM nodes as inner tree rows */
+function _renderInnerChildren(el, container, depth) {
+  if (depth > TREE_DEPTH_MAX) return;
+  Array.prototype.slice.call(el.childNodes).forEach(function(node) {
+    if (node.nodeType === 3) { // text node
+      var t = (node.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!t) return;
+      var row = document.createElement('div');
+      row.className = 'tn-inner-node';
+      var rh = document.createElement('div');
+      rh.className = 'tn-inode-hdr';
+      var dot = document.createElement('span'); dot.className = 'tn-tog'; dot.textContent = '·';
+      rh.appendChild(dot);
+      var ts = document.createElement('span'); ts.className = 'tn-inode-txt';
+      ts.textContent = '"' + (t.length > 60 ? t.substring(0, 60) + '…' : t) + '"';
+      rh.appendChild(ts);
+      row.appendChild(rh);
+      container.appendChild(row);
+    } else if (node.nodeType === 1) { // element node
+      var row = document.createElement('div');
+      row.className = 'tn-inner-node';
+      var rh = document.createElement('div');
+      rh.className = 'tn-inode-hdr';
+      var arrow = document.createElement('span'); arrow.className = 'tn-tog';
+      arrow.textContent = node.children.length ? '▸' : '·';
+      rh.appendChild(arrow);
+      var tagS = document.createElement('span'); tagS.className = 'tn-inode-tag';
+      tagS.textContent = _tagLabel(node);
+      rh.appendChild(tagS);
+      var innerTxt = (node.textContent || '').replace(/\s+/g, ' ').trim();
+      if (innerTxt.length > 0) {
+        var its = document.createElement('span'); its.className = 'tn-inode-txt';
+        its.textContent = innerTxt.length > 50 ? innerTxt.substring(0, 50) + '…' : innerTxt;
+        rh.appendChild(its);
+      }
+      row.appendChild(rh);
+      if (node.children.length && depth < TREE_DEPTH_MAX) {
+        var cc = document.createElement('div'); cc.className = 'tn-children';
+        _renderInnerChildren(node, cc, depth + 1);
+        row.appendChild(cc);
+      }
+      container.appendChild(row);
+    }
+  });
+}
+
+/* Toggle inline HTML editor for a block node */
+function _toggleTreeEdit(bid, wrap) {
+  var wasOpen = !!wrap.querySelector('.tn-edit-wrap');
+  // Close any open panels first
+  document.querySelectorAll('.tn-edit-wrap, .tn-ins-wrap').forEach(function(el){ el.remove(); });
+  if (wasOpen) return; // was already open → just closed it
+
+  var b = _blocks.find(function(x){ return x.id === bid; });
+  if (!b) return;
+
+  var editWrap = document.createElement('div');
+  editWrap.className = 'tn-edit-wrap';
+
+  var ta = document.createElement('textarea');
+  ta.value = b2html(b).trim();
+  ta.spellcheck = false;
+  ta.rows = 5;
+  editWrap.appendChild(ta);
+
+  var btns = document.createElement('div');
+  btns.className = 'tn-edit-btns';
+
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'tn-edit-save';
+  saveBtn.textContent = '✓ 应用';
+  saveBtn.addEventListener('click', function() {
+    _applyBlockHtml(bid, ta.value.trim());
+    editWrap.remove();
+  });
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'tn-edit-cancel';
+  cancelBtn.textContent = '取消';
+  cancelBtn.addEventListener('click', function() { editWrap.remove(); });
+
+  btns.appendChild(saveBtn);
+  btns.appendChild(cancelBtn);
+  editWrap.appendChild(btns);
+  wrap.appendChild(editWrap);
+  ta.focus();
+  ta.setSelectionRange(0, 0);
+}
+
+/* Parse edited HTML and update the corresponding block */
+function _applyBlockHtml(bid, newHtml) {
+  var idx = _blocks.findIndex(function(b){ return b.id === bid; });
+  if (idx < 0) return;
+
+  var wrapped = '<div class="ar">' + newHtml + '</div>';
+  var parsed = parseHtmlToBlocks(wrapped);
+
+  var newBlock;
+  // Use the first recognised block; if the HTML is unrecognised it becomes a raw block
+  if (parsed && parsed.length > 0 && parsed[0].type !== 'raw') {
+    newBlock = parsed[0];
+    newBlock.id = bid;
+  } else {
+    // Store as a raw block so nothing is lost
+    newBlock = mkBlock('raw', { html: newHtml });
+    newBlock.id = bid;
+  }
+
+  _blocks[idx] = newBlock;
+  var oldEl = $id(bid);
+  if (oldEl) oldEl.parentNode.replaceChild(_buildBlockEl(newBlock), oldEl);
+  syncCode();
+  schedPv();
+}
+
+/* Insert panel: choose block type to insert below */
+var _INSERT_BLOCK_TYPES = [
+  { t:'h1', l:'H1' },{ t:'h2', l:'H2' },{ t:'h3', l:'H3' },{ t:'h4', l:'H4' },{ t:'h5', l:'H5' },
+  { t:'p',  l:'段落' },{ t:'blockquote', l:'引用' },{ t:'ul', l:'无序列表' },{ t:'ol', l:'有序列表' },
+  { t:'abstract', l:'摘要' },{ t:'authors', l:'作者' },{ t:'keywords', l:'关键词' },
+  { t:'divider', l:'分割线' },{ t:'refs', l:'参考文献' },{ t:'raw', l:'自定义 HTML' }
+];
+
+function _toggleTreeInsert(bid, wrap) {
+  var wasOpen = !!wrap.querySelector('.tn-ins-wrap');
+  document.querySelectorAll('.tn-edit-wrap, .tn-ins-wrap').forEach(function(el){ el.remove(); });
+  if (wasOpen) return; // was already open → just closed it
+
+  var insWrap = document.createElement('div');
+  insWrap.className = 'tn-ins-wrap';
+
+  var lbl = document.createElement('div');
+  lbl.className = 'tn-ins-label';
+  lbl.textContent = '在下方插入：';
+  insWrap.appendChild(lbl);
+
+  var btnsDiv = document.createElement('div');
+  btnsDiv.className = 'tn-ins-btns';
+
+  _INSERT_BLOCK_TYPES.forEach(function(it) {
+    var btn = document.createElement('button');
+    btn.className = 'tn-ins-btn';
+    btn.textContent = it.l;
+    btn.addEventListener('click', function() {
+      insWrap.remove();
+      if (it.t === 'raw') _insertRawBlockAfter(bid);
+      else _insertBlockAfter(bid, it.t);
+    });
+    btnsDiv.appendChild(btn);
+  });
+
+  insWrap.appendChild(btnsDiv);
+  wrap.appendChild(insWrap);
+}
+
+/* Insert a regular block after the given block id */
+function _insertBlockAfter(afterBid, type) {
+  var idx = _blocks.findIndex(function(b){ return b.id === afterBid; });
+  if (idx < 0) { insertBlock(type); return; }
+  var b = mkBlock(type, {});
+  _blocks.splice(idx + 1, 0, b);
+  var afterEl = $id(afterBid);
+  var newEl = _buildBlockEl(b);
+  if (afterEl) {
+    if (afterEl.nextSibling) afterEl.parentNode.insertBefore(newEl, afterEl.nextSibling);
+    else afterEl.parentNode.appendChild(newEl);
+  } else {
+    $id('blist').appendChild(newEl);
+  }
+  var hint = $id('ehint');
+  if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+  _updateCount();
+  syncCode();
+  schedPv();
+  setTimeout(function(){ setSelected(b.id); }, 40);
+}
+
+/* Insert a raw (custom HTML) block after the given block and open its editor */
+function _insertRawBlockAfter(afterBid) {
+  var idx = _blocks.findIndex(function(b){ return b.id === afterBid; });
+  if (idx < 0) return;
+  var b = mkBlock('raw', { html: '<div>自定义 HTML</div>' });
+  _blocks.splice(idx + 1, 0, b);
+  var afterEl = $id(afterBid);
+  var newEl = _buildBlockEl(b);
+  if (afterEl) {
+    if (afterEl.nextSibling) afterEl.parentNode.insertBefore(newEl, afterEl.nextSibling);
+    else afterEl.parentNode.appendChild(newEl);
+  } else {
+    $id('blist').appendChild(newEl);
+  }
+  var hint = $id('ehint');
+  if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+  _updateCount();
+  syncCode();
+  schedPv();
+  // Auto-open the HTML editor for the new raw block
+  setTimeout(function() {
+    setSelected(b.id);
+    var tnEl = $id('tn-' + b.id);
+    if (tnEl) _toggleTreeEdit(b.id, tnEl);
+  }, 80);
+}
+
+/* Tab button wiring */
+$id('ce-tab-tree').addEventListener('click', function(){ switchCeTab('tree'); });
+$id('ce-tab-html').addEventListener('click', function(){ switchCeTab('html'); });
 
 /* =========================================================
    RESIZE HANDLE
