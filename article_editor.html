@@ -837,7 +837,7 @@ function debounce(fn, ms) {
    Key fix: use textContent (not innerHTML) to set content,
    block Enter key from creating new DOM nodes.
    ========================================================= */
-function makeBE(content, placeholder) {
+function makeBE(content, placeholder, opts) {
   var d = document.createElement('div');
   d.className = 'be';
   d.contentEditable = 'true';
@@ -846,8 +846,12 @@ function makeBE(content, placeholder) {
   d.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault(); // prevent <div> insertion inside block
-      // Insert a plain newline at cursor position
-      document.execCommand('insertText', false, '\n');
+      if (opts && opts.enterBlurs) {
+        d.blur(); // exit editing, keep block selected
+      } else {
+        // Insert a plain newline at cursor position
+        document.execCommand('insertText', false, '\n');
+      }
     }
   });
   return d;
@@ -1256,8 +1260,8 @@ function _buildInner(inner, b) {
     inner.appendChild(btn);
   }
 
-  function addBE(content, placeholder, onChange) {
-    var d = makeBE(content, placeholder);
+  function addBE(content, placeholder, onChange, opts) {
+    var d = makeBE(content, placeholder, opts);
     inner.appendChild(d);
     d.addEventListener('input', function() { onChange(d.innerText); syncCode(); schedPv(); });
     return d;
@@ -1291,7 +1295,7 @@ function _buildInner(inner, b) {
 
   switch (b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
-      addBE(b.content, '输入标题…', function(v){ b.content=v; });
+      addBE(b.content, '输入标题…', function(v){ b.content=v; }, {enterBlurs: true});
       break;
 
     case 'p': {
@@ -3180,6 +3184,12 @@ document.addEventListener('keydown', function(e) {
     if ($id('paste-overlay').classList.contains('open')) { closePasteDlg(); return; }
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
     if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
+    return;
+  }
+
+  // Space: deselect block (when not editing text)
+  if (e.key === ' ') {
+    if (!_isEditingText() && _sel && !_isModalOpen()) { e.preventDefault(); setSelected(null); }
     return;
   }
 
