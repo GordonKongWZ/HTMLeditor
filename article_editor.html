@@ -1070,7 +1070,7 @@ function _showPBsTip(msg) {
   tip.textContent = msg;
   tip.classList.add('vis');
   if (tip._hideTimer) clearTimeout(tip._hideTimer);
-  // Keep tip duration equal to the second-Backspace confirmation window.
+  // Keep tip duration equal to the second Backspace confirmation window.
   tip._hideTimer = setTimeout(function(){ tip.classList.remove('vis'); }, P_BS_TIMEOUT_MS);
 }
 
@@ -1446,7 +1446,7 @@ function _buildInner(inner, b) {
     b.type = toType;
     b.label = DEFS[toType].label || toType;
     if (/^h[1-5]$/.test(toType)) {
-      // p -> 标题: discard inline formatting, keep plain text only
+      // p -> heading: discard inline formatting, keep plain text only
       b.content = (fromType === 'p') ? _htmlToPlainText(b.content) : (b.content || '');
     } else if (toType === 'p') {
       b.content = b.content || '';
@@ -1882,7 +1882,7 @@ function parseHtmlToBlocks(htmlStr) {
 
     // Headings h1-h5
     if (/^h[1-5]$/.test(tag)) {
-      blocks.push(mkBlock(tag, { content: el.textContent, align: el.style.textAlign || '' }));
+      blocks.push(mkBlock(tag, { content: el.textContent, align: el.style.getPropertyValue('text-align') || '' }));
       i++; continue;
     }
 
@@ -1904,7 +1904,7 @@ function parseHtmlToBlocks(htmlStr) {
         blocks.push(mkBlock('eq-inline', { raw: txt.slice(1, -1) }));
         i++; continue;
       }
-      blocks.push(mkBlock('p', { content: el.innerHTML, align: el.style.textAlign || '' }));
+      blocks.push(mkBlock('p', { content: el.innerHTML, align: el.style.getPropertyValue('text-align') || '' }));
       i++; continue;
     }
 
@@ -1950,7 +1950,7 @@ function parseHtmlToBlocks(htmlStr) {
     if (tag === 'div') {
       if (el.classList.contains('abstract-box')) {
         var absp = el.querySelector('p');
-        blocks.push(mkBlock('abstract', { content: absp ? absp.innerHTML : '', align: (absp && absp.style.textAlign) || '' }));
+        blocks.push(mkBlock('abstract', { content: absp ? absp.innerHTML : '', align: (absp && absp.style.getPropertyValue('text-align')) || '' }));
         i++; continue;
       }
       if (el.classList.contains('kw-row')) {
@@ -2392,7 +2392,7 @@ function _parseGenericHtmlToBlocks(container) {
       if (txt) blocks.push(mkBlock(tag, { content: txt }));
     } else if (tag === 'p') {
       var content = _sanitizeHtml(el.innerHTML.trim());
-      if (content) blocks.push(mkBlock('p', { content: content, align: el.style.textAlign || '' }));
+      if (content) blocks.push(mkBlock('p', { content: content, align: el.style.getPropertyValue('text-align') || '' }));
     } else if (tag === 'blockquote') {
       var bqp = el.querySelector('p');
       blocks.push(mkBlock('blockquote', { content: _sanitizeHtml(bqp ? bqp.innerHTML : el.innerHTML) }));
