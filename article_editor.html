@@ -1091,7 +1091,13 @@ function _showPBsTip(msg, bid) {
     tip.style.left = left + 'px';
     tip.style.top = top + 'px';
   }
-  tip.classList.add('vis');
+  else {
+    tip.style.left = '50%';
+    tip.style.bottom = '18px';
+    tip.style.top = 'auto';
+    tip.style.transform = 'translateX(-50%)';
+    tip.classList.add('vis');
+  }
   if (tip._hideTimer) clearTimeout(tip._hideTimer);
   // Keep tip duration equal to the second Backspace confirmation window.
   tip._hideTimer = setTimeout(function(){ tip.classList.remove('vis'); }, P_BS_TIMEOUT_MS);
