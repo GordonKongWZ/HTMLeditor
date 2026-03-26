@@ -405,10 +405,11 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* ── Paragraph backspace tip ── */
 #p-bs-tip{
-  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
-  background:#1e2035;color:#dbe3ff;border:1px solid rgba(255,255,255,.12);
-  border-radius:8px;padding:6px 10px;font-size:11px;line-height:1.2;
-  box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:9001;display:none;pointer-events:none
+  position:fixed;left:0;top:0;
+  background:#fff;color:var(--t0);border:1px solid var(--acb);
+  border-radius:8px;padding:6px 10px;font-size:11px;line-height:1.25;
+  box-shadow:0 8px 20px rgba(25,40,90,.14);z-index:9001;display:none;pointer-events:none;
+  max-width:min(320px,calc(100vw - 16px))
 }
 #p-bs-tip.vis{display:block}
 
@@ -1060,7 +1061,7 @@ function _clearPBsPending() {
   _pBackspacePending = { bid:null, prevId:null, expiresAt:0, timer:null };
 }
 
-function _showPBsTip(msg) {
+function _showPBsTip(msg, bid) {
   var tip = $id('p-bs-tip');
   if (!tip) {
     tip = document.createElement('div');
@@ -1068,6 +1069,28 @@ function _showPBsTip(msg) {
     document.body.appendChild(tip);
   }
   tip.textContent = msg;
+  var anchor = bid ? $id(bid) : null;
+  if (anchor) {
+    tip.style.left = '0px';
+    tip.style.top = '0px';
+    tip.style.transform = 'none';
+    tip.style.bottom = 'auto';
+    tip.classList.add('vis');
+    var r = anchor.getBoundingClientRect();
+    var tr = tip.getBoundingClientRect();
+    var gap = 8;
+    var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+    var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    var left = r.left;
+    var top = r.top - tr.height - gap;
+    if (top < 8) top = r.bottom + gap;
+    if (left + tr.width > vw - 8) left = vw - tr.width - 8;
+    if (left < 8) left = 8;
+    if (top + tr.height > vh - 8) top = vh - tr.height - 8;
+    if (top < 8) top = 8;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
   tip.classList.add('vis');
   if (tip._hideTimer) clearTimeout(tip._hideTimer);
   // Keep tip duration equal to the second Backspace confirmation window.
@@ -1193,7 +1216,7 @@ function _handleParagraphBackspace(b, el, e) {
   _pBackspacePending.prevId = prev.id;
   _pBackspacePending.expiresAt = now + P_BS_TIMEOUT_MS;
   _pBackspacePending.timer = setTimeout(_clearPBsPending, P_BS_TIMEOUT_MS);
-  _showPBsTip(P_BS_TIP_MSG);
+  _showPBsTip(P_BS_TIP_MSG, b.id);
   return true;
 }
 
