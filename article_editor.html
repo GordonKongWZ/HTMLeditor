@@ -1085,6 +1085,22 @@ function _hasTextContent(html) {
   return _htmlToPlainText(html).trim().length > 0;
 }
 
+function _isCaretAtStart(el) {
+  var sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  var range = sel.getRangeAt(0);
+  if (!range.collapsed) return false;
+  if (!el.contains(range.startContainer)) return false;
+
+  var beforeRange = document.createRange();
+  beforeRange.setStart(el, 0);
+  beforeRange.setEnd(range.startContainer, range.startOffset);
+  var tmp = document.createElement('div');
+  tmp.appendChild(beforeRange.cloneContents());
+  var beforeHtml = _trimBrs(tmp.innerHTML || '').replace(/&nbsp;|&#160;/gi, ' ');
+  return !_hasTextContent(beforeHtml);
+}
+
 function _focusRichEnd(bid) {
   var el = $id(bid);
   if (!el) return;
@@ -1113,18 +1129,20 @@ function _focusRichStart(bid) {
 
 function _handleParagraphBackspace(b, el, e) {
   if (e.key !== 'Backspace') return false;
-  var split = _getCaretSplitContent(el);
-  if (!split || _trimBrs(split.before)) return false; // only when caret is at start
-  if (!_hasTextContent(b.content)) return false;      // proceed only when current p has content
+  if (!_isCaretAtStart(el)) { _clearPBsPending(); return false; }
+  e.preventDefault();
+  e.stopPropagation();
+
   var idx = _blocks.findIndex(function(blk){ return blk.id === b.id; });
-  if (idx <= 0) return false;
+  if (idx <= 0) { _clearPBsPending(); return true; }
 
   var prev = _blocks[idx - 1];
-  e.preventDefault();
+  var curHtml = _trimBrs(el.innerHTML || '');
+  b.content = curHtml;
 
   if (prev.type === 'p') {
     _clearPBsPending();
-    var merged = (prev.content || '') + (b.content || '');
+    var merged = (prev.content || '') + curHtml;
     prev.content = merged;
     var prevEl = $id(prev.id);
     var prevRich = prevEl ? prevEl.querySelector('.rich-be') : null;
@@ -1500,6 +1518,7 @@ function _buildInner(inner, b) {
         onEnter: function(e, el) { _splitParagraphAtCursor(b, el); }
       });
       d.addEventListener('paste', function(e) { _handlePBlockPaste(e, d, b); });
+      d.addEventListener('input', _clearPBsPending);
       d.addEventListener('keydown', function(e) { _handleParagraphBackspace(b, d, e); });
       addTextCtrlRow(b, true);
       break;
