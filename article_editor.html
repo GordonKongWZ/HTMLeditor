@@ -2118,7 +2118,8 @@ function doPv() {
   if (!pendingBid) {
     try { scrollX=frame.contentWindow.scrollX||0; scrollY=frame.contentWindow.scrollY||0; } catch(e){}
   }
-  var doc=frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document);
+  var doc=null;
+  try { doc=frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document); } catch(e) { doc=null; }
   if (doc) {
     doc.open(); doc.write(html); doc.close();
     _attachPvContextMenu();
