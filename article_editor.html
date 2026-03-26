@@ -793,8 +793,9 @@ var _treeMode = true; // true = tree view; false = raw HTML textarea
 var _treeExpanded = {}; // bid → bool: whether that block is expanded in tree
 var _syncTreeTimer = null; // debounce timer for tree rebuild
 var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block tree
-var _pBsPending = { bid:null, prevId:null, expiresAt:0, timer:null };
+var _pBackspacePending = { bid:null, prevId:null, expiresAt:0, timer:null };
 var P_BS_TIMEOUT_MS = 1000;
+var P_BS_TIP_MSG = '前一个块不是段落：1 秒内再按一次退格将删除前一个块';
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -1053,8 +1054,8 @@ function _splitParagraphAtCursor(b, el) {
 }
 
 function _clearPBsPending() {
-  if (_pBsPending.timer) clearTimeout(_pBsPending.timer);
-  _pBsPending = { bid:null, prevId:null, expiresAt:0, timer:null };
+  if (_pBackspacePending.timer) clearTimeout(_pBackspacePending.timer);
+  _pBackspacePending = { bid:null, prevId:null, expiresAt:0, timer:null };
 }
 
 function _showPBsTip(msg) {
@@ -1067,6 +1068,7 @@ function _showPBsTip(msg) {
   tip.textContent = msg;
   tip.classList.add('vis');
   if (tip._hideTimer) clearTimeout(tip._hideTimer);
+  // Keep tip duration equal to the second-Backspace confirmation window.
   tip._hideTimer = setTimeout(function(){ tip.classList.remove('vis'); }, P_BS_TIMEOUT_MS);
 }
 
@@ -1135,7 +1137,7 @@ function _handleParagraphBackspace(b, el, e) {
   }
 
   var now = Date.now();
-  if (_pBsPending.bid === b.id && _pBsPending.prevId === prev.id && now < _pBsPending.expiresAt) {
+  if (_pBackspacePending.bid === b.id && _pBackspacePending.prevId === prev.id && now < _pBackspacePending.expiresAt) {
     _clearPBsPending();
     deleteBlock(prev.id);
     setTimeout(function(){ _focusRichStart(b.id); }, 20);
@@ -1143,11 +1145,11 @@ function _handleParagraphBackspace(b, el, e) {
   }
 
   _clearPBsPending();
-  _pBsPending.bid = b.id;
-  _pBsPending.prevId = prev.id;
-  _pBsPending.expiresAt = now + P_BS_TIMEOUT_MS;
-  _pBsPending.timer = setTimeout(_clearPBsPending, P_BS_TIMEOUT_MS);
-  _showPBsTip('前一个块不是段落：1 秒内再按一次退格将删除前一个块');
+  _pBackspacePending.bid = b.id;
+  _pBackspacePending.prevId = prev.id;
+  _pBackspacePending.expiresAt = now + P_BS_TIMEOUT_MS;
+  _pBackspacePending.timer = setTimeout(_clearPBsPending, P_BS_TIMEOUT_MS);
+  _showPBsTip(P_BS_TIP_MSG);
   return true;
 }
 
