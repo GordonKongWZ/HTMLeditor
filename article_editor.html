@@ -3589,6 +3589,7 @@ document.addEventListener('keydown', function(e) {
 
   // Fixed non-configurable shortcuts
   switch (e.key) {
+    case 'Enter':     if (_sel) { e.preventDefault(); insertBlock('p'); }    return;
     case 'ArrowUp':   if (_sel) { e.preventDefault(); moveBlock(_sel, -1); } return;
     case 'ArrowDown': if (_sel) { e.preventDefault(); moveBlock(_sel,  1); } return;
     case 'Delete':
