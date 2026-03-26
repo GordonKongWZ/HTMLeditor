@@ -1153,6 +1153,37 @@ function _focusRichEnd(bid) {
   s.removeAllRanges(); s.addRange(r);
 }
 
+function _focusRichTextOffset(bid, offset) {
+  var el = $id(bid);
+  if (!el) return;
+  var richEl = el.querySelector('.rich-be');
+  if (!richEl) return;
+  richEl.focus();
+
+  var target = Math.max(0, offset|0);
+  var walker = document.createTreeWalker(richEl, NodeFilter.SHOW_TEXT, null);
+  var rem = target;
+  var n = null;
+  while ((n = walker.nextNode())) {
+    var len = n.nodeValue ? n.nodeValue.length : 0;
+    if (rem <= len) {
+      var s = window.getSelection();
+      var r = document.createRange();
+      r.setStart(n, rem);
+      r.collapse(true);
+      s.removeAllRanges(); s.addRange(r);
+      return;
+    }
+    rem -= len;
+  }
+
+  var s = window.getSelection();
+  var r = document.createRange();
+  r.selectNodeContents(richEl);
+  r.collapse(false);
+  s.removeAllRanges(); s.addRange(r);
+}
+
 function _focusRichStart(bid) {
   var el = $id(bid);
   if (!el) return;
@@ -1205,7 +1236,9 @@ function _handleParagraphBackspace(b, el, e) {
 
   if (prev.type === 'p') {
     _clearPBsPending();
-    var merged = (prev.content || '') + curHtml;
+    var prevHtml = prev.content || '';
+    var caretOffset = _htmlToPlainText(prevHtml).length;
+    var merged = prevHtml + curHtml;
     prev.content = merged;
     var prevEl = $id(prev.id);
     var prevRich = prevEl ? prevEl.querySelector('.rich-be') : null;
@@ -1215,7 +1248,7 @@ function _handleParagraphBackspace(b, el, e) {
     var curEl = $id(curId); if (curEl) curEl.remove();
     _updateCount(); syncCode(); schedPv();
     setSelected(prev.id);
-    setTimeout(function(){ _focusRichEnd(prev.id); }, 20);
+    setTimeout(function(){ _focusRichTextOffset(prev.id, caretOffset); }, 20);
     return true;
   }
 
