@@ -1442,16 +1442,18 @@ function _buildInner(inner, b) {
   function _convertBlockTypeInPlace(b, toType) {
     if (!DEFS[toType] || b.type === toType) return;
     var fromType = b.type;
+    var oldAlign = (b.data && b.data.align) ? b.data.align : '';
     b.type = toType;
     b.label = DEFS[toType].label || toType;
     if (/^h[1-5]$/.test(toType)) {
       // p -> 标题: discard inline formatting, keep plain text only
       b.content = (fromType === 'p') ? _htmlToPlainText(b.content) : (b.content || '');
-      if (b.data) delete b.data.align;
     } else if (toType === 'p') {
       b.content = b.content || '';
       b.data = b.data || {};
     }
+    b.data = b.data || {};
+    b.data.align = oldAlign || '';
     var oldEl = $id(b.id);
     if (oldEl && oldEl.parentNode) oldEl.parentNode.replaceChild(_buildBlockEl(b), oldEl);
     _clearPBsPending();
@@ -1769,7 +1771,6 @@ function b2html(b) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
       var hstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
       return '  <'+b.type+bid+hstyle+'>'+b.content+'</'+b.type+'>';
-    case 'p':
     case 'p': {
       var pstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
       return '  <p'+bid+pstyle+'>'+b.content+'</p>';
