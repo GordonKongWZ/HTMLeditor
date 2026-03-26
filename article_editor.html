@@ -876,6 +876,7 @@ function debounce(fn, ms) {
    block Enter key from creating new DOM nodes.
    ========================================================= */
 function makeBE(content, placeholder, opts) {
+  opts = opts || {};
   var d = document.createElement('div');
   d.className = 'be';
   d.contentEditable = 'true';
@@ -884,7 +885,9 @@ function makeBE(content, placeholder, opts) {
   d.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault(); // prevent <div> insertion inside block
-      if (opts && opts.enterBlurs) {
+      if (opts.onEnter) {
+        opts.onEnter(e, d);
+      } else if (opts.enterBlurs) {
         d.blur(); // exit editing, keep block selected
       } else {
         // Insert a plain newline at cursor position
@@ -1569,7 +1572,10 @@ function _buildInner(inner, b) {
 
   switch (b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
-      addBE(b.content, '输入标题…', function(v){ b.content=v; }, {enterBlurs: true});
+      addBE(b.content, '输入标题…', function(v){ b.content=v; }, {
+        enterBlurs: true,
+        onEnter: function() { setSelected(b.id); insertBlock('p'); }
+      });
       addTextCtrlRow(b, true);
       break;
 
