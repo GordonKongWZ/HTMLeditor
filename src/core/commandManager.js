@@ -7,7 +7,7 @@
 
 import { state, $id, mkBlock, _buildBlockEl, _appendBlockEl, _refreshInner, syncCode, schedPv, _updateCount, b2html, parseHtmlToBlocks } from './editor.js';
 import { setSelected } from './selection.js';
-import { on } from './eventBus.js';
+import { on, emit } from './eventBus.js';
 
 /* =========================================================
    INSERT
@@ -229,11 +229,12 @@ export function insertRawBlockAfter(afterBid) {
   // Auto-open the tree HTML editor for the new raw block
   setTimeout(function() {
     setSelected(b.id);
-    var tnEl = $id('tn-' + b.id);
-    if (tnEl) {
-      // Emit so treeView can open its editor
-      import('../ui/toolbar.js').then(function(m){ if (m._toggleTreeEdit) m._toggleTreeEdit(b.id, tnEl); });
-    }
+    /**
+     * 'openTreeEdit' — request the tree view (toolbar.js) to open the inline
+     * HTML editor panel for the block identified by `bid`.
+     * Payload: bid {string}
+     */
+    emit('openTreeEdit', b.id);
   }, 80);
 }
 
@@ -294,8 +295,8 @@ export function applyCodeToBlocks() {
   state.blocks.forEach(function(b){ _appendBlockEl(b); });
   _updateCount();
   state.syncingFromCode = false;
-  // Ask toolbar.js to re-render tree
-  on._syncTree && on._syncTree();
+  // Notify tree to rebuild
+  emit('syncTree');
 }
 
 /* =========================================================
@@ -303,8 +304,6 @@ export function applyCodeToBlocks() {
    Connect eventBus events emitted from editor.js _buildBlockEl
    back to these command functions.
    ========================================================= */
-import { on as busOn } from './eventBus.js';
-
-busOn('moveBlock',   function(id, dir){ moveBlock(id, dir); });
-busOn('reorderBlock',function(from, to, after){ reorderBlock(from, to, after); });
-busOn('selectBlock', function(id){ setSelected(id); });
+on('moveBlock',   function(id, dir){ moveBlock(id, dir); });
+on('reorderBlock',function(from, to, after){ reorderBlock(from, to, after); });
+on('selectBlock', function(id){ setSelected(id); });

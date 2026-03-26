@@ -148,8 +148,13 @@ function _buildTreeNode(b) {
   tagSpan.textContent = '<' + td.tag + (td.cls ? '.' + td.cls : '') + '>';
   hdr.appendChild(tagSpan);
 
-  var preview = (b.content || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-  if (!preview && b.type === 'raw') preview = (b.data.html || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  var _previewDiv = document.createElement('div');
+  _previewDiv.innerHTML = b.content || '';
+  var preview = (_previewDiv.textContent || '').replace(/\s+/g, ' ').trim();
+  if (!preview && b.type === 'raw') {
+    _previewDiv.innerHTML = b.data.html || '';
+    preview = (_previewDiv.textContent || '').replace(/\s+/g, ' ').trim();
+  }
   if (preview.length > 50) preview = preview.substring(0, 50) + '…';
   if (preview) {
     var txtSpan = document.createElement('span');
@@ -556,6 +561,15 @@ function _openTreeCtxMenu(e, id, nodeWrap) {
 export function initToolbar() {
   // Register tree-sync callback in editor.js
   setTreeSyncFn(syncTree);
+
+  // Listen for syncTree event from commandManager
+  on('syncTree', function() { syncTree(); });
+
+  // Listen for openTreeEdit event (e.g. after insertRawBlockAfter)
+  on('openTreeEdit', function(bid) {
+    var tnEl = $id('tn-' + bid);
+    if (tnEl) _toggleTreeEdit(bid, tnEl);
+  });
 
   /* ── Toolbar insert buttons ── */
   document.querySelectorAll('[data-insert]').forEach(function(btn){

@@ -324,8 +324,12 @@ export function wrapHTML(body) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+  integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5"
+  crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+  integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg"
+  crossorigin="anonymous"
   onload="document.querySelectorAll('.eq').forEach(function(el){try{var raw=el.textContent.trim().replace(/^\\$\\$/,'').replace(/\\$\\$$/,'').trim();el.innerHTML='';katex.render(raw,el,{displayMode:true,throwOnError:false});}catch(e){}});document.querySelectorAll('p').forEach(function(el){var t=el.textContent;var m=t.match(/^\\$(.+)\\$$/);if(m){try{var sp=document.createElement('span');katex.render(m[1],sp,{displayMode:false,throwOnError:false});el.innerHTML=sp.outerHTML;}catch(e){}}});"><\/script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -481,6 +485,13 @@ export function _scrollCodeToBlock(id) {
 /**
  * Parse an HTML string into an array of block objects.
  * Returns null if the HTML does not contain a .ar wrapper element.
+ *
+ * Security note: `el.innerHTML` is read from DOM elements already parsed by
+ * DOMParser — it reflects the browser's HTML serialization of trusted
+ * user-authored content.  The resulting block `content` values are later
+ * rendered inside the preview iframe, which is intentional for an HTML
+ * editor.  Consumers must NOT inject this content into the host page's DOM
+ * without further sanitization.
  */
 export function parseHtmlToBlocks(htmlStr) {
   var doc = new DOMParser().parseFromString(htmlStr, 'text/html');
@@ -488,6 +499,11 @@ export function parseHtmlToBlocks(htmlStr) {
   if (!ar) return null;
 
   var blocks = [];
+  /** Strip unsafe tags from an element's content, keeping safe inline HTML. */
+  function _cleanEl(el) {
+    return Array.prototype.slice.call(el.childNodes).map(_cleanInlineNode).join('');
+  }
+
   var children = Array.prototype.slice.call(ar.children);
 
   function capInfo(el) {
@@ -504,11 +520,15 @@ export function parseHtmlToBlocks(htmlStr) {
     var tag = el.tagName.toLowerCase();
 
     if (tag === 'hr') { blocks.push(mkBlock('divider', {})); i++; continue; }
-    if (/^h[1-5]$/.test(tag)) { blocks.push(mkBlock(tag, { content: el.innerHTML.trim() })); i++; continue; }
+    if (/^h[1-5]$/.test(tag)) { blocks.push(mkBlock(tag, { content: _cleanEl(el) })); i++; continue; }
     if (tag === 'p') {
       var cls = el.className || '';
       if (cls.indexOf('paper-authors') >= 0) {
-        var txt = el.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+        var txt = el.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+        // Strip remaining tags safely via DOM text extraction
+        var _tmpDiv = document.createElement('div');
+        _tmpDiv.innerHTML = txt;
+        txt = (_tmpDiv.textContent || '').trim();
         blocks.push(mkBlock('authors', { content: txt })); i++; continue;
       }
       // Check for inline equation: $...$
