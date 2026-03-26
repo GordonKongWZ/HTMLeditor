@@ -1599,7 +1599,7 @@ function _buildInner(inner, b) {
       d.addEventListener('paste', _handleGenericRichPaste);
       wrap.appendChild(d);
       d.addEventListener('input', function(){ b.content=d.innerHTML; syncCode(); schedPv(); });
-      addAlignRow(b);
+      addTextCtrlRow(b, true);
       break;
     }
     case 'authors': {
