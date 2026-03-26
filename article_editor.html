@@ -806,6 +806,10 @@ var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block t
 var _pBackspacePending = { bid:null, prevId:null, expiresAt:0, timer:null };
 var P_BS_TIMEOUT_MS = 1000;
 var P_BS_TIP_MSG = '前一个块不是段落：1 秒内再按一次退格将删除前一个块';
+var _lastUsedTextColor = '';
+var _pCtrlBPending = { bid:null, ts:0 };
+var P_CTRL_B_DBL_MS = 500;
+var P_CTRL_B_NO_COLOR_TIP_MSG = '暂无最近颜色，请先在格式栏选择颜色';
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -1269,6 +1273,34 @@ function _handleParagraphBackspace(b, el, e) {
   return true;
 }
 
+function _execForeColor(c) {
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand('foreColor', false, c);
+  document.execCommand('styleWithCSS', false, false);
+}
+
+function _handleParagraphCtrlBDouble(b, el, e) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
+  if (e.key.toLowerCase() !== 'b') return false;
+  e.preventDefault();
+  e.stopPropagation();
+
+  var now = Date.now();
+  var isDouble = (_pCtrlBPending.bid === b.id && (now - _pCtrlBPending.ts) <= P_CTRL_B_DBL_MS);
+  _pCtrlBPending.bid = b.id;
+  _pCtrlBPending.ts = now;
+
+  if (!isDouble) {
+    document.execCommand('bold', false, null);
+    return true;
+  }
+
+  if (!document.queryCommandState('bold')) document.execCommand('bold', false, null);
+  if (_lastUsedTextColor) _execForeColor(_lastUsedTextColor);
+  else _showPBsTip(P_CTRL_B_NO_COLOR_TIP_MSG, b.id);
+  return true;
+}
+
 /* Insert a sequence of p blocks after block with id afterBid, returns the last inserted block id */
 function _insertPBlocksAfter(afterBid, contentArray, align) {
   var idx = _blocks.findIndex(function(blk){ return blk.id === afterBid; });
@@ -1368,7 +1400,9 @@ function makeRichBE(content, placeholder, opts) {
     }
     if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
-        case 'b': e.preventDefault(); document.execCommand('bold',         false, null); break;
+        case 'b':
+          if (opts.onCtrlB && opts.onCtrlB(e, d)) break;
+          e.preventDefault(); document.execCommand('bold',         false, null); break;
         case 'i': e.preventDefault(); document.execCommand('italic',       false, null); break;
         case 's': e.preventDefault(); e.stopPropagation(); // stop browser save shortcut
                   document.execCommand('strikeThrough', false, null); break;
@@ -1614,7 +1648,8 @@ function _buildInner(inner, b) {
 
     case 'p': {
       var d = addRichBE(b.content, '输入段落文字…', function(v){ b.content=v; }, {
-        onEnter: function(e, el) { _splitParagraphAtCursor(b, el); }
+        onEnter: function(e, el) { _splitParagraphAtCursor(b, el); },
+        onCtrlB: function(e, el) { return _handleParagraphCtrlBDouble(b, el, e); }
       });
       d.addEventListener('paste', function(e) { _handlePBlockPaste(e, d, b); });
       d.addEventListener('input', _clearPBsPending);
@@ -3176,14 +3211,11 @@ $id('ce-tab-html').addEventListener('click', function(){ switchCeTab('html'); })
       restoreSel();
       var c = sw.dataset.c;
       if (c) {
-        document.execCommand('styleWithCSS', false, true);
-        document.execCommand('foreColor', false, c);
-        document.execCommand('styleWithCSS', false, false);
+        _lastUsedTextColor = c;
+        _execForeColor(c);
       } else {
         // Empty data-c = clear color only (don't remove other formatting)
-        document.execCommand('styleWithCSS', false, true);
-        document.execCommand('foreColor', false, 'inherit');
-        document.execCommand('styleWithCSS', false, false);
+        _execForeColor('inherit');
       }
       afterFormat();
     });
