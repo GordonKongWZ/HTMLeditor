@@ -406,7 +406,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
   background:#1e2035;color:#dbe3ff;border:1px solid rgba(255,255,255,.12);
   border-radius:8px;padding:6px 10px;font-size:11px;line-height:1.2;
-  box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:9500;display:none;pointer-events:none
+  box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:9001;display:none;pointer-events:none
 }
 #p-bs-tip.vis{display:block}
 
@@ -794,6 +794,7 @@ var _treeExpanded = {}; // bid → bool: whether that block is expanded in tree
 var _syncTreeTimer = null; // debounce timer for tree rebuild
 var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block tree
 var _pBsPending = { bid:null, prevId:null, expiresAt:0, timer:null };
+var P_BS_TIMEOUT_MS = 1000;
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -1066,12 +1067,13 @@ function _showPBsTip(msg) {
   tip.textContent = msg;
   tip.classList.add('vis');
   if (tip._hideTimer) clearTimeout(tip._hideTimer);
-  tip._hideTimer = setTimeout(function(){ tip.classList.remove('vis'); }, 1000);
+  tip._hideTimer = setTimeout(function(){ tip.classList.remove('vis'); }, P_BS_TIMEOUT_MS);
 }
 
 function _htmlToPlainText(html) {
   var tmp = document.createElement('div');
   tmp.innerHTML = html || '';
+  // contentEditable may introduce zero-width spaces as caret markers; drop them for clean text conversion
   return (tmp.textContent || '').replace(/\u200B/g,'');
 }
 
@@ -1109,7 +1111,7 @@ function _handleParagraphBackspace(b, el, e) {
   if (e.key !== 'Backspace') return false;
   var split = _getCaretSplitContent(el);
   if (!split || _trimBrs(split.before)) return false; // only when caret is at start
-  if (!_hasTextContent(b.content)) return false;      // only when current p has content
+  if (!_hasTextContent(b.content)) return false;      // proceed only when current p has content
   var idx = _blocks.findIndex(function(blk){ return blk.id === b.id; });
   if (idx <= 0) return false;
 
@@ -1143,8 +1145,8 @@ function _handleParagraphBackspace(b, el, e) {
   _clearPBsPending();
   _pBsPending.bid = b.id;
   _pBsPending.prevId = prev.id;
-  _pBsPending.expiresAt = now + 1000;
-  _pBsPending.timer = setTimeout(_clearPBsPending, 1000);
+  _pBsPending.expiresAt = now + P_BS_TIMEOUT_MS;
+  _pBsPending.timer = setTimeout(_clearPBsPending, P_BS_TIMEOUT_MS);
   _showPBsTip('前一个块不是段落：1 秒内再按一次退格将删除前一个块');
   return true;
 }
