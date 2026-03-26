@@ -1127,6 +1127,20 @@ function _focusRichStart(bid) {
   s.removeAllRanges(); s.addRange(r);
 }
 
+function _focusBlockEnd(bid) {
+  var el = $id(bid);
+  if (!el) return;
+  var be = el.querySelector('.rich-be') || el.querySelector('.be');
+  if (!be) return;
+  be.focus();
+  var s = window.getSelection();
+  var r = document.createRange();
+  if (be.classList.contains('rich-be')) r.selectNodeContents(be);
+  else r.setStart(be, be.childNodes.length);
+  r.collapse(false);
+  s.removeAllRanges(); s.addRange(r);
+}
+
 function _handleParagraphBackspace(b, el, e) {
   if (e.key !== 'Backspace') return false;
   if (!_isCaretAtStart(el)) { _clearPBsPending(); return false; }
@@ -1139,6 +1153,16 @@ function _handleParagraphBackspace(b, el, e) {
   var prev = _blocks[idx - 1];
   var curHtml = _trimBrs(el.innerHTML || '');
   b.content = curHtml;
+  if (!_hasTextContent(curHtml)) {
+    _clearPBsPending();
+    var curId = b.id;
+    _blocks.splice(idx, 1);
+    var curEl = $id(curId); if (curEl) curEl.remove();
+    _updateCount(); syncCode(); schedPv();
+    setSelected(prev.id);
+    setTimeout(function(){ _focusBlockEnd(prev.id); }, 20);
+    return true;
+  }
 
   if (prev.type === 'p') {
     _clearPBsPending();
