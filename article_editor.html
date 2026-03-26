@@ -398,6 +398,17 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .abtn svg{width:11px;height:11px;flex-shrink:0}
 .abtn:hover{background:var(--acl);color:var(--ac);border-color:var(--acb)}
 .abtn.on{background:var(--ac);color:#fff;border-color:var(--acd)}
+.convert-row{display:flex;gap:2px;margin-top:4px;justify-content:flex-end;flex-wrap:wrap}
+.convert-row .abtn{padding:2px 5px;min-width:30px}
+
+/* ── Paragraph backspace tip ── */
+#p-bs-tip{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  background:#1e2035;color:#dbe3ff;border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:6px 10px;font-size:11px;line-height:1.2;
+  box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:9500;display:none;pointer-events:none
+}
+#p-bs-tip.vis{display:block}
 
 /* ── Code editor tab buttons ── */
 .ce-tab{padding:2px 8px;border:none;background:transparent;color:var(--t2);font-size:10px;font-family:var(--fm);cursor:pointer;border-radius:var(--r4);transition:all .1s;white-space:nowrap;line-height:1}
@@ -782,6 +793,7 @@ var _treeMode = true; // true = tree view; false = raw HTML textarea
 var _treeExpanded = {}; // bid → bool: whether that block is expanded in tree
 var _syncTreeTimer = null; // debounce timer for tree rebuild
 var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block tree
+var _pBsPending = { bid:null, prevId:null, expiresAt:0, timer:null };
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -1037,6 +1049,104 @@ function _splitParagraphAtCursor(b, el) {
     r.collapse(true);
     s.removeAllRanges(); s.addRange(r);
   }, 20);
+}
+
+function _clearPBsPending() {
+  if (_pBsPending.timer) clearTimeout(_pBsPending.timer);
+  _pBsPending = { bid:null, prevId:null, expiresAt:0, timer:null };
+}
+
+function _showPBsTip(msg) {
+  var tip = $id('p-bs-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'p-bs-tip';
+    document.body.appendChild(tip);
+  }
+  tip.textContent = msg;
+  tip.classList.add('vis');
+  if (tip._hideTimer) clearTimeout(tip._hideTimer);
+  tip._hideTimer = setTimeout(function(){ tip.classList.remove('vis'); }, 1000);
+}
+
+function _htmlToPlainText(html) {
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  return (tmp.textContent || '').replace(/\u200B/g,'');
+}
+
+function _hasTextContent(html) {
+  return _htmlToPlainText(html).trim().length > 0;
+}
+
+function _focusRichEnd(bid) {
+  var el = $id(bid);
+  if (!el) return;
+  var richEl = el.querySelector('.rich-be');
+  if (!richEl) return;
+  richEl.focus();
+  var s = window.getSelection();
+  var r = document.createRange();
+  r.selectNodeContents(richEl);
+  r.collapse(false);
+  s.removeAllRanges(); s.addRange(r);
+}
+
+function _focusRichStart(bid) {
+  var el = $id(bid);
+  if (!el) return;
+  var richEl = el.querySelector('.rich-be');
+  if (!richEl) return;
+  richEl.focus();
+  var s = window.getSelection();
+  var r = document.createRange();
+  r.setStart(richEl, 0);
+  r.collapse(true);
+  s.removeAllRanges(); s.addRange(r);
+}
+
+function _handleParagraphBackspace(b, el, e) {
+  if (e.key !== 'Backspace') return false;
+  var split = _getCaretSplitContent(el);
+  if (!split || _trimBrs(split.before)) return false; // only when caret is at start
+  if (!_hasTextContent(b.content)) return false;      // only when current p has content
+  var idx = _blocks.findIndex(function(blk){ return blk.id === b.id; });
+  if (idx <= 0) return false;
+
+  var prev = _blocks[idx - 1];
+  e.preventDefault();
+
+  if (prev.type === 'p') {
+    _clearPBsPending();
+    var merged = (prev.content || '') + (b.content || '');
+    prev.content = merged;
+    var prevEl = $id(prev.id);
+    var prevRich = prevEl ? prevEl.querySelector('.rich-be') : null;
+    if (prevRich) prevRich.innerHTML = merged;
+    var curId = b.id;
+    _blocks.splice(idx, 1);
+    var curEl = $id(curId); if (curEl) curEl.remove();
+    _updateCount(); syncCode(); schedPv();
+    setSelected(prev.id);
+    setTimeout(function(){ _focusRichEnd(prev.id); }, 20);
+    return true;
+  }
+
+  var now = Date.now();
+  if (_pBsPending.bid === b.id && _pBsPending.prevId === prev.id && now < _pBsPending.expiresAt) {
+    _clearPBsPending();
+    deleteBlock(prev.id);
+    setTimeout(function(){ _focusRichStart(b.id); }, 20);
+    return true;
+  }
+
+  _clearPBsPending();
+  _pBsPending.bid = b.id;
+  _pBsPending.prevId = prev.id;
+  _pBsPending.expiresAt = now + 1000;
+  _pBsPending.timer = setTimeout(_clearPBsPending, 1000);
+  _showPBsTip('前一个块不是段落：1 秒内再按一次退格将删除前一个块');
+  return true;
 }
 
 /* Insert a sequence of p blocks after block with id afterBid, returns the last inserted block id */
@@ -1323,9 +1433,49 @@ function _buildInner(inner, b) {
     inner.appendChild(row);
   }
 
+  function _convertBlockTypeInPlace(b, toType) {
+    if (!DEFS[toType] || b.type === toType) return;
+    var fromType = b.type;
+    b.type = toType;
+    b.label = DEFS[toType].label || toType;
+    if (/^h[1-5]$/.test(toType)) {
+      // p -> 标题: discard inline formatting, keep plain text only
+      b.content = (fromType === 'p') ? _htmlToPlainText(b.content) : (b.content || '');
+      if (b.data) delete b.data.align;
+    } else if (toType === 'p') {
+      b.content = b.content || '';
+      b.data = b.data || {};
+    }
+    var oldEl = $id(b.id);
+    if (oldEl && oldEl.parentNode) oldEl.parentNode.replaceChild(_buildBlockEl(b), oldEl);
+    _clearPBsPending();
+    syncCode(); schedPv();
+    setSelected(b.id);
+  }
+
+  function addTypeConvertRow(b) {
+    if (!(b.type === 'p' || /^h[1-5]$/.test(b.type))) return;
+    var row = mkDiv('convert-row');
+    [
+      { t:'h1', l:'H1' }, { t:'h2', l:'H2' }, { t:'h3', l:'H3' },
+      { t:'h4', l:'H4' }, { t:'h5', l:'H5' }, { t:'p',  l:'段落' }
+    ].forEach(function(it) {
+      var btn = document.createElement('button');
+      btn.className = 'abtn' + (b.type === it.t ? ' on' : '');
+      btn.textContent = it.l;
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _convertBlockTypeInPlace(b, it.t);
+      });
+      row.appendChild(btn);
+    });
+    inner.appendChild(row);
+  }
+
   switch (b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
       addBE(b.content, '输入标题…', function(v){ b.content=v; }, {enterBlurs: true});
+      addTypeConvertRow(b);
       break;
 
     case 'p': {
@@ -1333,7 +1483,9 @@ function _buildInner(inner, b) {
         onEnter: function(e, el) { _splitParagraphAtCursor(b, el); }
       });
       d.addEventListener('paste', function(e) { _handlePBlockPaste(e, d, b); });
+      d.addEventListener('keydown', function(e) { _handleParagraphBackspace(b, d, e); });
       addAlignRow(b);
+      addTypeConvertRow(b);
       break;
     }
 
