@@ -388,8 +388,10 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #pouter.pv-resp #pfwrap{flex:1;width:100% !important;height:auto;min-height:0;transform:none !important;margin-bottom:0 !important}
 #pouter.pv-resp #pframe{height:100%;min-height:0;border-radius:0;border-left:none;border-right:none;box-shadow:none}
 
-/* ── Paragraph alignment row ── */
-.align-row{display:flex;gap:2px;margin-top:5px;padding-top:4px;border-top:.5px solid var(--bl)}
+/* ── Text block control row (align left + convert right) ── */
+.align-row{display:flex;align-items:center;gap:8px;margin-top:5px;padding-top:4px;border-top:.5px solid var(--bl)}
+.align-left{display:flex;gap:2px}
+.align-sp{flex:1}
 .abtn{
   display:flex;align-items:center;justify-content:center;gap:2px;padding:2px 6px;
   border:1px solid var(--bm);border-radius:var(--r4);background:transparent;
@@ -398,7 +400,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .abtn svg{width:11px;height:11px;flex-shrink:0}
 .abtn:hover{background:var(--acl);color:var(--ac);border-color:var(--acb)}
 .abtn.on{background:var(--ac);color:#fff;border-color:var(--acd)}
-.convert-row{display:flex;gap:2px;margin-top:4px;justify-content:flex-end;flex-wrap:wrap}
+.convert-row{display:flex;gap:2px;justify-content:flex-end;flex-wrap:wrap}
 .convert-row .abtn{padding:2px 5px;min-width:30px}
 
 /* ── Paragraph backspace tip ── */
@@ -1418,8 +1420,8 @@ function _buildInner(inner, b) {
     return d;
   }
 
-  function addAlignRow(b) {
-    var row = mkDiv('align-row');
+  function _buildAlignButtons(b) {
+    var wrap = mkDiv('align-left');
     ALIGN_DEFS.forEach(function(a) {
       var btn = document.createElement('button');
       btn.className = 'abtn' + (b.data.align === a.v ? ' on' : '');
@@ -1428,13 +1430,13 @@ function _buildInner(inner, b) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         b.data.align = (b.data.align === a.v) ? '' : a.v;
-        row.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
+        wrap.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
         if (b.data.align) btn.classList.add('on');
         syncCode(); schedPv();
       });
-      row.appendChild(btn);
+      wrap.appendChild(btn);
     });
-    inner.appendChild(row);
+    return wrap;
   }
 
   function _convertBlockTypeInPlace(b, toType) {
@@ -1457,7 +1459,7 @@ function _buildInner(inner, b) {
     setSelected(b.id);
   }
 
-  function addTypeConvertRow(b) {
+  function _buildTypeConvertRow(b) {
     if (!(b.type === 'p' || /^h[1-5]$/.test(b.type))) return;
     var row = mkDiv('convert-row');
     [
@@ -1473,13 +1475,22 @@ function _buildInner(inner, b) {
       });
       row.appendChild(btn);
     });
+    return row;
+  }
+
+  function addTextCtrlRow(b, withAlign) {
+    var row = mkDiv('align-row');
+    if (withAlign) row.appendChild(_buildAlignButtons(b));
+    var sp = mkDiv('align-sp'); row.appendChild(sp);
+    var cv = _buildTypeConvertRow(b);
+    if (cv) row.appendChild(cv);
     inner.appendChild(row);
   }
 
   switch (b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
       addBE(b.content, '输入标题…', function(v){ b.content=v; }, {enterBlurs: true});
-      addTypeConvertRow(b);
+      addTextCtrlRow(b, true);
       break;
 
     case 'p': {
@@ -1488,8 +1499,7 @@ function _buildInner(inner, b) {
       });
       d.addEventListener('paste', function(e) { _handlePBlockPaste(e, d, b); });
       d.addEventListener('keydown', function(e) { _handleParagraphBackspace(b, d, e); });
-      addAlignRow(b);
-      addTypeConvertRow(b);
+      addTextCtrlRow(b, true);
       break;
     }
 
@@ -1757,7 +1767,8 @@ function b2html(b) {
   var bid = ' data-bid="'+b.id+'"';
   switch(b.type) {
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5':
-      return '  <'+b.type+bid+'>'+b.content+'</'+b.type+'>';
+      var hstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
+      return '  <'+b.type+bid+hstyle+'>'+b.content+'</'+b.type+'>';
     case 'p':
     case 'p': {
       var pstyle = b.data.align ? ' style="text-align:'+b.data.align+'"' : '';
@@ -1870,7 +1881,7 @@ function parseHtmlToBlocks(htmlStr) {
 
     // Headings h1-h5
     if (/^h[1-5]$/.test(tag)) {
-      blocks.push(mkBlock(tag, { content: el.textContent }));
+      blocks.push(mkBlock(tag, { content: el.textContent, align: el.style.textAlign || '' }));
       i++; continue;
     }
 
