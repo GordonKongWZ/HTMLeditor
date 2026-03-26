@@ -273,51 +273,6 @@ export function _insertPBlocksAfter(afterBid, contentArray, align) {
    ========================================================= */
 
 /**
- * Handle paste inside a paragraph block.
- * Intercepts clipboard, parses into inline segments, inserts blocks.
- */
-export function _handlePBlockPaste(e, d, b) {
-  e.preventDefault();
-  var html  = e.clipboardData ? e.clipboardData.getData('text/html')  : '';
-  var text  = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
-  var paras = _htmlToParagraphs(html, text);
-  if (!paras.length) return;
-
-  if (paras.length === 1) {
-    // Single paragraph: insert inline at caret
-    document.execCommand('insertHTML', false, paras[0]);
-    b.content = d.innerHTML;
-    syncCode(); schedPv();
-    return;
-  }
-
-  var parts = _getCaretSplitContent(d);
-  var firstContent = parts.before + paras[0];
-  var lastContent  = paras[paras.length - 1] + parts.after;
-  var allContents  = [firstContent].concat(paras.slice(1, -1)).concat([lastContent]);
-
-  d.innerHTML = allContents[0];
-  b.content = allContents[0];
-
-  var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
-  var lastId = _insertPBlocksAfter(b.id, allContents.slice(1), b.data.align || '');
-  _updateCount(); syncCode(); schedPv();
-
-  setTimeout(function() {
-    var lastBEl = $id(lastId);
-    if (!lastBEl) return;
-    var richEl = lastBEl.querySelector('.rich-be');
-    if (!richEl) return;
-    richEl.focus();
-    var s = window.getSelection();
-    var r = document.createRange();
-    r.selectNodeContents(richEl);
-    r.collapse(false);
-    s.removeAllRanges(); s.addRange(r);
-  }, 10);
-}
-
-/**
  * Handle paste inside a generic rich-text block (blockquote, abstract, infobox).
  * Inserts sanitized inline content only (no new blocks).
  */
@@ -390,6 +345,11 @@ export function confirmPaste() {
    EVENT BUS WIRING
    ========================================================= */
 
-on('splitParagraph',   function(b, el){ _splitParagraphAtCursor(b, el); });
-on('paragraphPaste',   function(e, d, b){ _handlePBlockPaste(e, d, b); });
-on('genericRichPaste', function(e){ _handleGenericRichPaste(e); });
+on('splitParagraph', function(b, el){ _splitParagraphAtCursor(b, el); });
+
+// Fallback inline-paste handlers for block types without dedicated component folders.
+// Components that have their own index.js (paragraph, abstract, citation) register
+// their handlers in their own paste.js files.
+['infobox'].forEach(function(type) {
+  on('inlinePaste:' + type, function(e){ _handleGenericRichPaste(e); });
+});

@@ -89,18 +89,19 @@ Import the model file in `src/app.js` to register it before the editor initialis
 
 ## Adding a New Component Type
 
-1. Create `src/components/<name>/` with the five files:
+1. Create `src/components/<name>/` with the following files:
    - `<name>.model.js` — define the contract object and call `registerComponent(…)`
    - `<name>.commands.js` — type-specific commands
-   - `<name>.paste.js` — paste rules
+   - `<name>.paste.js` — paste handler; register inline paste via `on('inlinePaste:<type>', ...)` and optionally set `comp.inlinePaste` / `comp.globalPasteParser` on the descriptor
    - `<name>.interaction.js` — keyboard/mouse handlers
-   - `<name>.css` — scoped styles (use `.ed-<name>` as the root class)
-2. Add a `<link rel="stylesheet" href="src/components/<name>/<name>.css">` in `index.html`.
-3. Import the model in `src/app.js`:
+   - `<name>.css` — scoped styles (use the component's `cssClass` as the root selector)
+   - `index.js` — single entry point: imports model + paste, injects CSS via `injectComponentCSS('<type>', cssText)`
+2. Import the component's `index.js` in `src/app.js` (after the core modules):
    ```js
-   import './components/<name>/<name>.model.js';
+   import './components/<name>/index.js';
    ```
-4. Add a toolbar button in `index.html` if needed (`data-insert="<type>"` or `data-dialog="<type>"`).
+   The `index.js` handles CSS injection automatically — **do not** add a `<link>` tag to `index.html`.
+3. Add a toolbar button in `index.html` if needed (`data-insert="<type>"` or `data-dialog="<type>"`).
 
 ---
 
@@ -116,7 +117,9 @@ Paste interception is in `src/core/pastePipeline.js`. Stages:
 | **normalize** | Ensure the resulting block tree is schema-valid |
 | **insert** | Insert all new blocks in a single transactional step |
 
-Global paste (outside text fields) is intercepted in `src/ui/shortcuts.js`, which opens the paste-preview dialog (`#paste-overlay`) so the user can confirm before inserting.
+**Inline paste routing**: When paste occurs inside a block's contentEditable element, `editor.js` emits `inlinePaste:<type>` (e.g. `inlinePaste:p`, `inlinePaste:abstract`). Each component's `<name>.paste.js` registers a handler via `on('inlinePaste:<type>', handler)`. Fallbacks for types without a dedicated component folder are registered in `pastePipeline.js`.
+
+**Global paste** (outside text fields) is intercepted in `src/ui/shortcuts.js`, which opens the paste-preview dialog (`#paste-overlay`) so the user can confirm before inserting.
 
 ---
 

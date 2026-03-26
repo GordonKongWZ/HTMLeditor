@@ -773,7 +773,7 @@ export function _buildInner(inner, b) {
       var d = addRichBE(b.content, '输入段落文字…', function(v){ b.content = v; }, {
         onEnter: function(e, el) { emit('splitParagraph', b, el); }
       });
-      d.addEventListener('paste', function(e) { emit('paragraphPaste', e, d, b); });
+      d.addEventListener('paste', function(e) { emit('inlinePaste:p', e, d, b); });
       addAlignRow(b);
       break;
     }
@@ -781,7 +781,7 @@ export function _buildInner(inner, b) {
     case 'blockquote': {
       var wrap = mkDiv('bqx'); inner.appendChild(wrap);
       var d2 = makeRichBE(b.content, '引用文字…');
-      d2.addEventListener('paste', function(e){ emit('genericRichPaste', e); });
+      d2.addEventListener('paste', function(e){ emit('inlinePaste:blockquote', e); });
       wrap.appendChild(d2);
       d2.addEventListener('input', function(){ b.content = d2.innerHTML; syncCode(); schedPv(); });
       break;
@@ -797,7 +797,7 @@ export function _buildInner(inner, b) {
       var wrap2 = mkDiv('abx'); inner.appendChild(wrap2);
       var tit = mkDiv('abxtit'); tit.textContent = 'Abstract / 摘要'; wrap2.appendChild(tit);
       var d3 = makeRichBE(b.content, '摘要内容…');
-      d3.addEventListener('paste', function(e){ emit('genericRichPaste', e); });
+      d3.addEventListener('paste', function(e){ emit('inlinePaste:abstract', e); });
       wrap2.appendChild(d3);
       d3.addEventListener('input', function(){ b.content = d3.innerHTML; syncCode(); schedPv(); });
       addAlignRow(b);
@@ -829,7 +829,7 @@ export function _buildInner(inner, b) {
       var tit2 = mkDiv('ibxtit'); tit2.style.color = c.tc;
       tit2.textContent = b.data.ibTitle || '提示'; wrap3.appendChild(tit2);
       var d4 = makeRichBE(b.content, '内容…'); d4.style.color = c.tc;
-      d4.addEventListener('paste', function(e){ emit('genericRichPaste', e); });
+      d4.addEventListener('paste', function(e){ emit('inlinePaste:infobox', e); });
       wrap3.appendChild(d4);
       inner.appendChild(wrap3);
       d4.addEventListener('input', function(){ b.content = d4.innerHTML; syncCode(); schedPv(); });

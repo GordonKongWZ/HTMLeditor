@@ -12,13 +12,7 @@
 <link rel="stylesheet" href="src/styles/reset.css">
 <link rel="stylesheet" href="src/styles/theme.css">
 <link rel="stylesheet" href="src/styles/editor.css">
-<!-- Per-component CSS -->
-<link rel="stylesheet" href="src/components/heading/heading.css">
-<link rel="stylesheet" href="src/components/paragraph/paragraph.css">
-<link rel="stylesheet" href="src/components/citation/citation.css">
-<link rel="stylesheet" href="src/components/abstract/abstract.css">
-<link rel="stylesheet" href="src/components/separator/separator.css">
-<link rel="stylesheet" href="src/components/image/image.css">
+<!-- Per-component CSS is now injected dynamically by each component's index.js -->
 </head>
 <body>
 <div id="app">
@@ -37,6 +31,8 @@
   <button class="tbtn" id="btn-copy">📋 复制代码</button>
   <div class="vsep"></div>
   <button class="tbtn" id="btn-clear">🗑 清空</button>
+  <div class="vsep"></div>
+  <button class="tbtn" id="btn-modules" title="块库管理">🧩 块库</button>
   <div class="vsep"></div>
   <button class="tbtn" id="btn-shortcuts" title="键盘快捷键 (?)" aria-label="键盘快捷键">⌨ 快捷键</button>
   <div class="spacer"></div>
@@ -211,6 +207,24 @@
       </div>
     </div>
     <div id="sc-body"></div>
+  </div>
+</div>
+
+<!-- Module Manager Panel -->
+<div id="mod-overlay">
+  <div id="mod-box">
+    <div id="mod-head">
+      <span>🧩 块库管理</span>
+      <button id="mod-close" aria-label="关闭块库面板">✕</button>
+    </div>
+    <div id="mod-body">
+      <div id="mod-list"></div>
+    </div>
+    <div id="mod-foot">
+      <span id="mod-hint" style="font-size:11px;color:var(--t2)">内置模块不可删除</span>
+      <div style="flex:1"></div>
+      <button class="dcancel" id="mod-close2">关闭</button>
+    </div>
   </div>
 </div>
 

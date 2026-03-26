@@ -18,12 +18,14 @@ import './core/commandManager.js';
 import './core/pastePipeline.js';
 
 /* ── Component registrations ── */
-import './components/heading/heading.model.js';
-import './components/paragraph/paragraph.model.js';
-import './components/citation/citation.model.js';
-import './components/abstract/abstract.model.js';
-import './components/separator/separator.model.js';
-import './components/image/image.model.js';
+import './components/heading/index.js';
+import './components/paragraph/index.js';
+import './components/citation/index.js';
+import './components/abstract/index.js';
+import './components/separator/index.js';
+import './components/image/index.js';
+
+import './core/moduleManager.js';
 
 /* ── UI modules ── */
 import { initToolbar }     from './ui/toolbar.js';

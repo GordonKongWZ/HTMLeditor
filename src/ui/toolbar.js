@@ -16,6 +16,7 @@ import { state, $id, mkDiv, esc, debounce, syncCode, schedPv, doPv, b2html, pars
 import { insertBlock, deleteBlock, moveBlock, duplicateBlock, applyCodeToBlocks, schedApplyCode, insertBlockAfter, insertRawBlockAfter, applyBlockHtml } from '../core/commandManager.js';
 import { setSelected } from '../core/selection.js';
 import { on, emit } from '../core/eventBus.js';
+import { getLoadedModules, exportModule, removeModule } from '../core/moduleManager.js';
 
 /* =========================================================
    TREE VIEW
@@ -555,6 +556,88 @@ function _openTreeCtxMenu(e, id, nodeWrap) {
 }
 
 /* =========================================================
+   MODULE MANAGER PANEL
+   ========================================================= */
+
+function openModuleManager() {
+  _renderModuleList();
+  $id('mod-overlay').classList.add('open');
+}
+
+function closeModuleManager() {
+  $id('mod-overlay').classList.remove('open');
+}
+
+function _renderModuleList() {
+  var list = $id('mod-list');
+  list.innerHTML = '';
+  var modules = getLoadedModules();
+  if (!modules.length) {
+    var empty = mkDiv();
+    empty.style.cssText = 'text-align:center;color:var(--t2);font-size:12px;padding:16px 0';
+    empty.textContent = '暂无已加载的块模块';
+    list.appendChild(empty);
+    return;
+  }
+  modules.forEach(function(m) {
+    var row = mkDiv('mod-row');
+
+    var typeTag = mkDiv('mod-type');
+    typeTag.textContent = m.type;
+    row.appendChild(typeTag);
+
+    var label = mkDiv('mod-label');
+    label.textContent = m.label;
+    row.appendChild(label);
+
+    var badges = mkDiv('mod-badges');
+    var pasteBadge = mkDiv('mod-badge' + (m.hasInlinePaste ? ' active' : ''));
+    pasteBadge.title = m.hasInlinePaste ? '拥有内部粘贴处理器' : '无内部粘贴处理器';
+    pasteBadge.textContent = '内粘贴';
+    badges.appendChild(pasteBadge);
+
+    var gpBadge = mkDiv('mod-badge' + (m.hasGlobalPaste ? ' active' : ''));
+    gpBadge.title = m.hasGlobalPaste ? '提供全局粘贴解析器' : '未配置全局粘贴解析器';
+    gpBadge.textContent = '全局解析';
+    badges.appendChild(gpBadge);
+    row.appendChild(badges);
+
+    var actions = mkDiv('mod-actions');
+
+    var exportBtn = document.createElement('button');
+    exportBtn.className = 'mod-btn';
+    exportBtn.textContent = '导出';
+    exportBtn.title = '下载该模块的元数据 JSON';
+    exportBtn.addEventListener('click', function() {
+      var meta = exportModule(m.type);
+      if (!meta) return;
+      var blob = new Blob([JSON.stringify(meta, null, 2)], { type:'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'block-module-' + m.type + '.json';
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+    });
+    actions.appendChild(exportBtn);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'mod-btn danger';
+    removeBtn.textContent = '删除';
+    removeBtn.title = m.builtin ? '内置模块不可删除' : '从块库中移除该模块（已渲染的块不受影响）';
+    removeBtn.disabled = !!m.builtin;
+    removeBtn.addEventListener('click', function() {
+      if (!confirm('确定从块库中移除模块 "' + m.label + '" (' + m.type + ')？\n已插入的块不受影响，但新建该类型的块将不可用。')) return;
+      removeModule(m.type);
+      _renderModuleList();
+    });
+    actions.appendChild(removeBtn);
+
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
+/* =========================================================
    INIT — called once from app.js after DOM is ready
    ========================================================= */
 
@@ -638,6 +721,12 @@ export function initToolbar() {
     $id('pframe').src = 'about:blank';
     syncTree();
   });
+
+  /* ── Module manager ── */
+  $id('btn-modules').addEventListener('click', openModuleManager);
+  $id('mod-close').addEventListener('click', closeModuleManager);
+  $id('mod-close2').addEventListener('click', closeModuleManager);
+  $id('mod-overlay').addEventListener('click', function(e){ if (e.target === this) closeModuleManager(); });
 
   /* ── Code editor textarea ── */
   $id('ctarea').addEventListener('input', function(){
