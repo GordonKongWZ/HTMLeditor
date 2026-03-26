@@ -2,19 +2,35 @@
 
 A lightweight HTML editor for custom-style, dual-pane article editing — featuring a block-based visual editor on the left and a live preview iframe on the right.
 
+> ⚠️ **必须通过本地服务器打开，不能直接双击 `index.html`**
+>
+> 本项目使用 ES module（`import`/`export`），浏览器的安全策略会在 `file://` 协议下阻止模块加载，导致所有功能失效。
+>
+> **推荐方式（任选一种）：**
+> ```bash
+> # 方式 1：Node.js（推荐，需提前安装 Node.js）
+> npx serve .
+>
+> # 方式 2：Python（系统自带）
+> python3 -m http.server
+> # 或 Windows 上的 Python 2
+> python -m SimpleHTTPServer
+> ```
+> 然后在浏览器中访问 `http://localhost:3000`（serve）或 `http://localhost:8000`（python）。
+>
+> 也可以使用 **VS Code Live Server 插件**（右键 `index.html` → Open with Live Server）。
+
 ---
 
 ## Getting Started
 
-Open `index.html` directly in a browser (no build step required), or serve with any static file server:
+Serve the project root with any static file server and open the URL in a browser:
 
 ```bash
 npx serve .
 # or
 python3 -m http.server
 ```
-
-> **Note:** ES modules require a server for `import` to work. Opening `index.html` via `file://` will fail due to browser CORS restrictions on local modules.
 
 ---
 
