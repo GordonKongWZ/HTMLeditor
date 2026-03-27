@@ -104,10 +104,19 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* Block type badge */
 .btbadge{
-  position:absolute;right:5px;top:3px;font-size:9px;font-weight:600;color:var(--acm);
-  opacity:0;pointer-events:none;text-transform:uppercase;letter-spacing:.05em;transition:opacity .1s
+  position:absolute;right:5px;top:3px;
+  display:flex;align-items:center;gap:3px;
+  opacity:0;pointer-events:none;transition:opacity .1s
 }
 .bi:hover .btbadge{opacity:1}
+.btbadge-lbl{font-size:9px;font-weight:600;color:var(--acm);text-transform:uppercase;letter-spacing:.05em}
+.bt-save-btn{
+  pointer-events:auto;font-size:11px;line-height:1;
+  width:14px;height:14px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--acb);border-radius:2px;
+  background:transparent;color:var(--acm);cursor:pointer;padding:0;transition:all .1s
+}
+.bt-save-btn:hover{background:var(--ac);border-color:var(--acd);color:#fff}
 
 /* Block inner */
 .binn{padding:6px 8px}
@@ -454,6 +463,61 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .ce-tab:hover{background:var(--bg2);color:var(--t0)}
 .ce-tab.act{background:var(--bg2);color:var(--t0);font-weight:600}
 
+/* ── Custom Component Library pane ── */
+#cl-pane{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+#cl-pane-bar{
+  display:flex;align-items:center;gap:5px;padding:3px 8px;
+  background:var(--bg1);border-bottom:1px solid var(--bl);flex-shrink:0
+}
+#cl-pane-bar span{font-size:10px;color:var(--t2)}
+#cl-body{flex:1;overflow-y:auto;padding:5px 6px;background:#fff;min-height:0}
+.cl-item{
+  display:flex;align-items:center;gap:5px;padding:4px 8px;
+  border-radius:var(--r4);border:1px solid var(--bl);background:#fff;
+  cursor:pointer;transition:all .1s;margin-bottom:3px;user-select:none
+}
+.cl-item:hover{background:var(--acl);border-color:var(--acb)}
+.cl-type-badge{
+  font-size:9px;font-family:var(--fm);padding:1px 4px;border-radius:2px;
+  background:var(--bg2);color:var(--t1);flex-shrink:0;text-transform:uppercase;
+  letter-spacing:.04em;line-height:1.4
+}
+.cl-item-label{font-size:11px;color:var(--t0);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+/* ── Custom Library Context Menu ── */
+#ctxm-cl{
+  display:none;position:fixed;z-index:2000;background:#fff;border:1px solid var(--bm);
+  border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:140px
+}
+#ctxm-cl.open{display:block}
+
+/* ── Custom Library Import Dialog ── */
+#cl-import-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center
+}
+#cl-import-overlay.open{display:flex}
+#cl-import-box{
+  background:#fff;border-radius:var(--r12);padding:18px 22px 16px;
+  width:92vw;max-width:700px;max-height:90vh;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+#cl-import-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#cl-import-head span{font-size:14px;font-weight:700;color:var(--t0)}
+#cl-import-close{background:none;border:none;cursor:pointer;font-size:14px;color:var(--t2);padding:2px 6px;border-radius:var(--r4);line-height:1}
+#cl-import-close:hover{background:var(--bg1);color:var(--t0)}
+#cl-import-preview-wrap{flex:1;min-height:180px;border:1px solid var(--bm);border-radius:var(--r8);overflow:hidden;background:var(--bg0)}
+#cl-import-iframe{width:100%;height:100%;border:none;display:block}
+#cl-import-code-wrap{flex-shrink:0;height:120px;display:flex;flex-direction:column;gap:4px}
+#cl-import-code-label{font-size:11px;color:var(--t2)}
+#cl-import-code{flex:1;resize:none;border:1px solid var(--bm);border-radius:var(--r8);padding:7px 10px;font-family:var(--fm);font-size:11px;color:var(--t1);background:var(--bg1);outline:none;overflow:auto}
+#cl-import-code:focus{border-color:var(--acm)}
+#cl-import-name-wrap{flex-shrink:0;display:flex;align-items:center;gap:8px}
+#cl-import-name-lbl{font-size:11px;color:var(--t1);white-space:nowrap;flex-shrink:0}
+#cl-import-name{flex:1;padding:5px 9px;border:1px solid var(--bm);border-radius:var(--r4);font-size:12px;font-family:var(--fs);color:var(--t0);outline:none;background:#fff}
+#cl-import-name:focus{border-color:var(--acm);box-shadow:0 0 0 3px rgba(38,68,186,.1)}
+
 /* ── Tree view pane ── */
 #ce-tree-pane{flex:1;overflow-y:auto;background:#fff;padding:4px 3px;min-height:0}
 .tv-empty{font-size:11px;color:var(--t2);text-align:center;padding:20px 10px;font-family:var(--fm)}
@@ -728,10 +792,20 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <div style="flex:1"></div>
       <button class="ce-tab act" id="ce-tab-tree" aria-label="树形视图">🌲 树形</button>
       <button class="ce-tab" id="ce-tab-html" aria-label="HTML 视图">◁▷ HTML</button>
+      <button class="ce-tab" id="ce-tab-cl" aria-label="自定义组件库">☆ 组件库</button>
       <span id="cchars" style="font-size:10px;color:var(--t2);margin-left:6px">0 chars</span>
     </div>
     <div id="ce-tree-pane"><div class="tv-empty">暂无内容</div></div>
     <textarea id="ctarea" spellcheck="false" style="display:none" placeholder="<!-- 插入组件后代码将在此显示，可直接编辑 -->"></textarea>
+    <!-- Custom Component Library pane -->
+    <div id="cl-pane">
+      <div id="cl-pane-bar">
+        <button class="ce-tab" id="cl-import-btn">＋ 导入 HTML</button>
+        <div style="flex:1"></div>
+        <span id="cl-count">0 个组件</span>
+      </div>
+      <div id="cl-body"></div>
+    </div>
   </div>
 </div>
 
@@ -804,6 +878,15 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <div class="cxi" id="cxpv-sel">✓ 选中此块</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cxpv-del">✕ 删除</div>
+</div>
+
+<!-- Context Menu (custom library) -->
+<div id="ctxm-cl">
+  <div class="cxi" id="cxcl-insert">⊕ 插入到当前位置</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxcl-rename">✎ 重命名</div>
+  <div class="cxs"></div>
+  <div class="cxi danger" id="cxcl-del">✕ 从库中删除</div>
 </div>
 
 <!-- Floating Format Bar (rich-text blocks) -->
@@ -903,6 +986,31 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   </div>
 </div>
 
+<!-- Custom Library Import Dialog -->
+<div id="cl-import-overlay">
+  <div id="cl-import-box">
+    <div id="cl-import-head">
+      <span>📥 导入到组件库</span>
+      <button id="cl-import-close">✕</button>
+    </div>
+    <div id="cl-import-preview-wrap">
+      <iframe id="cl-import-iframe" sandbox="allow-same-origin"></iframe>
+    </div>
+    <div id="cl-import-code-wrap">
+      <div id="cl-import-code-label">粘贴 HTML 代码（将保存为自定义组件）</div>
+      <textarea id="cl-import-code" spellcheck="false" placeholder="<!-- 在此粘贴 HTML 代码 -->"></textarea>
+    </div>
+    <div id="cl-import-name-wrap">
+      <span id="cl-import-name-lbl">组件名称：</span>
+      <input id="cl-import-name" type="text" placeholder="自定义组件名称">
+    </div>
+    <div class="dbtns">
+      <button class="dcancel" id="cl-import-cancel">取消</button>
+      <button class="dconfirm" id="cl-import-confirm">保存到组件库</button>
+    </div>
+  </div>
+</div>
+
 <!-- Find & Replace Dialog -->
 <div id="fr-overlay">
   <div id="fr-box">
@@ -983,6 +1091,12 @@ var _lastUsedTextColor = '';
 var _pCtrlBPending = { bid:null, ts:0 };
 var P_CTRL_B_DBL_MS = 500;
 var P_CTRL_B_NO_COLOR_TIP_MSG = '暂无最近颜色，请先在格式栏选择颜色';
+
+/* ── Custom Component Library ── */
+var _clItems = [];       /* array of { id, label, type, block } */
+var _CL_KEY  = 'htmleditor_cl_v1';
+var _clCtxItemId = null; /* item id being right-clicked */
+var _ceMode  = 'tree';   /* current code-pane mode: 'tree' | 'html' | 'cl' */
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -1670,7 +1784,19 @@ function _buildBlockEl(b) {
 
   // ── Badge ──
   var badge = document.createElement('span');
-  badge.className = 'btbadge'; badge.textContent = b.label;
+  badge.className = 'btbadge';
+  var badgeLbl = document.createElement('span');
+  badgeLbl.className = 'btbadge-lbl';
+  badgeLbl.textContent = b.label;
+  badge.appendChild(badgeLbl);
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'bt-save-btn';
+  saveBtn.title = '存入组件库';
+  saveBtn.textContent = '+';
+  (function(blk) {
+    saveBtn.addEventListener('click', function(e) { e.stopPropagation(); addToLibrary(blk); });
+  })(b);
+  badge.appendChild(saveBtn);
   el.appendChild(badge);
 
   // ── Inner content ──
@@ -3464,14 +3590,18 @@ $id('btn-clear').addEventListener('click',function(){
    TREE VIEW
    ========================================================= */
 
-/* Switch between tree view and raw HTML textarea */
+/* Switch between tree view, raw HTML textarea, and custom library */
 function switchCeTab(mode) {
+  _ceMode = mode;
   _treeMode = (mode === 'tree');
-  $id('ce-tree-pane').style.display = _treeMode ? '' : 'none';
-  $id('ctarea').style.display = _treeMode ? 'none' : '';
-  $id('ce-tab-tree').classList.toggle('act', _treeMode);
-  $id('ce-tab-html').classList.toggle('act', !_treeMode);
-  if (_treeMode) _doSyncTree();
+  $id('ce-tree-pane').style.display = (mode === 'tree') ? '' : 'none';
+  $id('ctarea').style.display       = (mode === 'html') ? '' : 'none';
+  $id('cl-pane').style.display      = (mode === 'cl')   ? 'flex' : 'none';
+  $id('ce-tab-tree').classList.toggle('act', mode === 'tree');
+  $id('ce-tab-html').classList.toggle('act', mode === 'html');
+  $id('ce-tab-cl').classList.toggle('act',   mode === 'cl');
+  if (mode === 'tree') _doSyncTree();
+  if (mode === 'cl')   renderClLib();
 }
 
 /* Debounced tree rebuild — called from syncCode() */
@@ -3886,6 +4016,7 @@ function _insertRawBlockAfter(afterBid) {
 /* Tab button wiring */
 $id('ce-tab-tree').addEventListener('click', function(){ switchCeTab('tree'); });
 $id('ce-tab-html').addEventListener('click', function(){ switchCeTab('html'); });
+$id('ce-tab-cl').addEventListener('click',   function(){ switchCeTab('cl'); });
 
 /* =========================================================
    RESIZE HANDLE
@@ -4045,7 +4176,7 @@ function _openPvCtxMenu(bid, x, y) {
 }
 
 function _closeAllCtxMenus() {
-  ['ctxm','ctxm-tree','ctxm-pv'].forEach(function(id){ $id(id).classList.remove('open'); });
+  ['ctxm','ctxm-tree','ctxm-pv','ctxm-cl'].forEach(function(id){ $id(id).classList.remove('open'); });
   _pvClearCtxHighlight();
 }
 
@@ -4352,7 +4483,8 @@ function _isModalOpen() {
   return $id('doverlay').classList.contains('open') ||
          $id('sc-overlay').classList.contains('open') ||
          $id('paste-overlay').classList.contains('open') ||
-         $id('export-next-overlay').classList.contains('open');
+         $id('export-next-overlay').classList.contains('open') ||
+         $id('cl-import-overlay').classList.contains('open');
 }
 
 /* Intercept paste (Ctrl+V) when not editing text */
@@ -4471,8 +4603,220 @@ $id('sc-overlay').addEventListener('click', function(e) {
 $id('btn-shortcuts').addEventListener('click', openShortcutHelp);
 
 
+/* =========================================================
+   CUSTOM COMPONENT LIBRARY
+   ========================================================= */
+
+/* ── Persistence ── */
+function _clLoad() {
+  try {
+    var s = localStorage.getItem(_CL_KEY);
+    if (s) _clItems = JSON.parse(s);
+  } catch(e) { console.error('Custom library load failed:', e); _clItems = []; }
+}
+
+function _clSave() {
+  try { localStorage.setItem(_CL_KEY, JSON.stringify(_clItems)); } catch(e) { console.error('Custom library save failed:', e); }
+}
+
+function _clUid() {
+  return 'cl' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+/* ── Add block to library ── */
+function addToLibrary(b) {
+  var defLabel = b.label;
+  var txt = (b.content || '').replace(/<[^>]+>/g, '').trim();
+  if (txt) defLabel += ' · ' + txt.substring(0, 16);
+  var name = prompt('请输入组件名称：', defLabel);
+  if (name === null) return; // cancelled
+  if (!name.trim()) name = b.label;
+  var item = {
+    id:    _clUid(),
+    label: name.trim(),
+    type:  b.type,
+    block: JSON.parse(JSON.stringify(b))
+  };
+  _clItems.push(item);
+  _clSave();
+  /* Open the library pane so user sees the new item */
+  if (_ceMode !== 'cl') switchCeTab('cl');
+  else renderClLib();
+}
+
+/* ── Render library pane ── */
+function renderClLib() {
+  var body = $id('cl-body');
+  if (!body) return;
+  body.innerHTML = '';
+  $id('cl-count').textContent = _clItems.length + ' 个组件';
+  if (!_clItems.length) {
+    var emp = document.createElement('div');
+    emp.className = 'tv-empty';
+    emp.textContent = '组件库为空 · 点击块右上角 + 按钮保存组件';
+    body.appendChild(emp);
+    return;
+  }
+  _clItems.forEach(function(item) {
+    var el = document.createElement('div');
+    el.className = 'cl-item';
+    el.dataset.clid = item.id;
+    el.title = '单击插入到编辑器 · 右键更多操作';
+
+    var badge = document.createElement('span');
+    badge.className = 'cl-type-badge';
+    badge.textContent = (DEFS[item.type] || { label: item.type }).label || item.type;
+    el.appendChild(badge);
+
+    var lbl = document.createElement('span');
+    lbl.className = 'cl-item-label';
+    lbl.textContent = item.label;
+    el.appendChild(lbl);
+
+    (function(iid) {
+      el.addEventListener('click', function() { insertFromLibrary(iid); });
+      el.addEventListener('contextmenu', function(e) { e.preventDefault(); _openClCtx(e, iid); });
+    })(item.id);
+
+    body.appendChild(el);
+  });
+}
+
+/* ── Insert component into editor ── */
+function insertFromLibrary(itemId) {
+  var item = _clItems.find(function(x){ return x.id === itemId; });
+  if (!item) return;
+  var nb = JSON.parse(JSON.stringify(item.block));
+  nb.id = uid();
+  var selIdx = _sel ? _blocks.findIndex(function(x){ return x.id === _sel; }) : -1;
+  if (selIdx >= 0) {
+    _blocks.splice(selIdx + 1, 0, nb);
+    var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+    var newEl = _buildBlockEl(nb);
+    var selEl = $id(_sel);
+    if (selEl && selEl.nextSibling) selEl.parentNode.insertBefore(newEl, selEl.nextSibling);
+    else if (selEl) selEl.parentNode.appendChild(newEl);
+    else $id('blist').appendChild(newEl);
+  } else {
+    _blocks.push(nb);
+    _appendBlockEl(nb);
+  }
+  _updateCount(); syncCode(); schedPv();
+  setTimeout(function() {
+    var el = $id(nb.id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setSelected(nb.id);
+  }, 40);
+}
+
+/* ── Remove from library ── */
+function removeFromLibrary(itemId) {
+  _clItems = _clItems.filter(function(x){ return x.id !== itemId; });
+  _clSave();
+  renderClLib();
+}
+
+/* ── Rename library item ── */
+function renameLibraryItem(itemId) {
+  var item = _clItems.find(function(x){ return x.id === itemId; });
+  if (!item) return;
+  var name = prompt('重命名组件：', item.label);
+  if (name === null || !name.trim()) return;
+  item.label = name.trim();
+  _clSave();
+  renderClLib();
+}
+
+/* ── Context menu for library ── */
+function _openClCtx(e, itemId) {
+  _clCtxItemId = itemId;
+  var m = $id('ctxm-cl');
+  m.style.left = e.clientX + 'px';
+  m.style.top  = e.clientY + 'px';
+  m.classList.add('open');
+  requestAnimationFrame(function() {
+    var r = m.getBoundingClientRect();
+    if (r.right  > window.innerWidth)  m.style.left = (e.clientX - r.width)  + 'px';
+    if (r.bottom > window.innerHeight) m.style.top  = (e.clientY - r.height) + 'px';
+  });
+}
+
+$id('cxcl-insert').addEventListener('click', function() {
+  if (_clCtxItemId) insertFromLibrary(_clCtxItemId);
+});
+$id('cxcl-rename').addEventListener('click', function() {
+  if (_clCtxItemId) renameLibraryItem(_clCtxItemId);
+});
+$id('cxcl-del').addEventListener('click', function() {
+  if (_clCtxItemId && confirm('确定从组件库中删除此组件？')) removeFromLibrary(_clCtxItemId);
+});
+
+/* ── Library import dialog ── */
+var _clImportPreviewTimer = null;
+
+function openClImportDlg() {
+  $id('cl-import-code').value = '';
+  $id('cl-import-name').value = '';
+  $id('cl-import-iframe').srcdoc = '';
+  $id('cl-import-overlay').classList.add('open');
+  setTimeout(function(){ $id('cl-import-code').focus(); }, 50);
+}
+
+function _updateClImportPreview() {
+  clearTimeout(_clImportPreviewTimer);
+  _clImportPreviewTimer = setTimeout(function() {
+    var html = $id('cl-import-code').value.trim();
+    if (!html) { $id('cl-import-iframe').srcdoc = ''; return; }
+    /* Wrap in a minimal page for preview */
+    var previewHtml = wrapHTML('  ' + html);
+    /* Strip scripts for sandbox safety */
+    var doc = new DOMParser().parseFromString(previewHtml, 'text/html');
+    doc.querySelectorAll('script').forEach(function(s){ s.remove(); });
+    $id('cl-import-iframe').srcdoc = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  }, 350);
+}
+
+function closeClImportDlg() {
+  clearTimeout(_clImportPreviewTimer);
+  $id('cl-import-overlay').classList.remove('open');
+}
+
+function confirmClImport() {
+  var html = $id('cl-import-code').value.trim();
+  if (!html) {
+    /* Visual feedback: highlight the empty textarea */
+    var ta = $id('cl-import-code');
+    ta.focus();
+    ta.style.borderColor = '#e63946';
+    setTimeout(function(){ ta.style.borderColor = ''; }, 1500);
+    return;
+  }
+  var name = $id('cl-import-name').value.trim();
+  if (!name) name = '自定义组件';
+  var block = mkBlock('raw', { html: html });
+  var item = {
+    id:    _clUid(),
+    label: name,
+    type:  'raw',
+    block: block
+  };
+  _clItems.push(item);
+  _clSave();
+  closeClImportDlg();
+  if (_ceMode !== 'cl') switchCeTab('cl');
+  else renderClLib();
+}
+
+$id('cl-import-close').addEventListener('click',   closeClImportDlg);
+$id('cl-import-cancel').addEventListener('click',  closeClImportDlg);
+$id('cl-import-confirm').addEventListener('click', confirmClImport);
+$id('cl-import-overlay').addEventListener('click', function(e){ if (e.target === this) closeClImportDlg(); });
+$id('cl-import-code').addEventListener('input', _updateClImportPreview);
+$id('cl-import-btn').addEventListener('click',  openClImportDlg);
+
 window.addEventListener('load', function(){
   schedPv();
+  _clLoad(); // load persisted custom library
 });
 </script>
 </body>
