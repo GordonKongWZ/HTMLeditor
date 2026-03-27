@@ -270,11 +270,18 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .dconfirm:hover{background:var(--acd)}
 
 /* Copy Code Dialog */
-#copy-overlay{
+#copy-overlay,#export-next-overlay{
   display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
   z-index:1000;align-items:center;justify-content:center
 }
-#copy-overlay.open{display:flex}
+#copy-overlay.open,#export-next-overlay.open{display:flex}
+#export-next-box{
+  background:#fff;border-radius:var(--r12);padding:22px;
+  min-width:260px;max-width:340px;width:90vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+#export-next-box h3{font-size:14px;font-weight:700;margin:0 0 10px;color:var(--t0)}
+#export-next-box p{font-size:13px;color:var(--t1);margin:0 0 14px;line-height:1.5}
 #copy-box{
   background:#fff;border-radius:var(--r12);padding:22px;
   min-width:280px;max-width:380px;width:90vw;
@@ -829,6 +836,17 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
     <div class="dbtns">
       <button class="dcancel" id="copy-cancel">取消</button>
       <button class="dconfirm" id="copy-confirm">📋 复制</button>
+    </div>
+  </div>
+</div>
+
+<div id="export-next-overlay">
+  <div id="export-next-box">
+    <h3>✅ 导出成功</h3>
+    <p>是否新建下一篇文章？（当前内容将被清空）</p>
+    <div class="dbtns">
+      <button class="dcancel" id="export-next-cancel">稍后</button>
+      <button class="dconfirm" id="export-next-confirm">📝 新建</button>
     </div>
   </div>
 </div>
@@ -2774,6 +2792,21 @@ $id('btn-export').addEventListener('click',function(){
   var blob=new Blob([$id('ctarea').value],{type:'text/html'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname+'.html'; a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  if (_blocks.length) $id('export-next-overlay').classList.add('open');
+});
+$id('export-next-cancel').addEventListener('click', function() {
+  $id('export-next-overlay').classList.remove('open');
+});
+$id('export-next-overlay').addEventListener('click', function(e) {
+  if (e.target === this) $id('export-next-overlay').classList.remove('open');
+});
+$id('export-next-confirm').addEventListener('click', function() {
+  $id('export-next-overlay').classList.remove('open');
+  _blocks=[]; _sel=null;
+  $id('blist').innerHTML=''; _updateCount();
+  $id('ctarea').value=''; $id('cchars').textContent='0 chars';
+  doPv();
+  syncTree();
 });
 $id('btn-copy').addEventListener('click', function() {
   $id('copy-overlay').classList.add('open');
@@ -3713,7 +3746,8 @@ function _isEditingText() {
 function _isModalOpen() {
   return $id('doverlay').classList.contains('open') ||
          $id('sc-overlay').classList.contains('open') ||
-         $id('paste-overlay').classList.contains('open');
+         $id('paste-overlay').classList.contains('open') ||
+         $id('export-next-overlay').classList.contains('open');
 }
 
 /* Intercept paste (Ctrl+V) when not editing text */
@@ -3733,6 +3767,7 @@ document.addEventListener('keydown', function(e) {
 
   // Escape: close shortcut modal first; otherwise close paste dialog; then deselect block
   if (e.key === 'Escape') {
+    if ($id('export-next-overlay').classList.contains('open')) { $id('export-next-overlay').classList.remove('open'); return; }
     if ($id('paste-overlay').classList.contains('open')) { closePasteDlg(); return; }
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
     if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
