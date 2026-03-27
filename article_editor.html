@@ -818,6 +818,13 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
           <div class="copy-opt-desc">移除 KaTeX 等脚本引用（数学公式将不渲染）</div>
         </div>
       </label>
+      <label class="copy-opt">
+        <input type="checkbox" id="copy-no-top-gap">
+        <div class="copy-opt-text">
+          <div class="copy-opt-label">去除顶部空距</div>
+          <div class="copy-opt-desc">移除 H1 标题和作者块上方的内外边距</div>
+        </div>
+      </label>
     </div>
     <div class="dbtns">
       <button class="dcancel" id="copy-cancel">取消</button>
@@ -2060,6 +2067,10 @@ function buildCopyHTML(opts) {
   if (opts.noJs) {
     html = html.replace(/<script\b[\s\S]*?<\/script>\s*/g, '');
   }
+  if (opts.noTopGap) {
+    html = html.replace(/(\.ar\{[^}]*?padding:)[\d.]+rem /, '$10 ');
+    html = html.replace(/(\.paper-authors\{[^}]*?margin:)[\d.]+rem /, '$10 ');
+  }
   return html;
 }
 
@@ -2764,7 +2775,8 @@ $id('copy-overlay').addEventListener('click', function(e) {
 $id('copy-confirm').addEventListener('click', function() {
   var opts = {
     noMargin: $id('copy-no-margin').checked,
-    noJs: $id('copy-no-js').checked
+    noJs: $id('copy-no-js').checked,
+    noTopGap: $id('copy-no-top-gap').checked
   };
   var html = buildCopyHTML(opts);
   var btn = this;
