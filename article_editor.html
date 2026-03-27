@@ -639,6 +639,8 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
 #fr-rep-all:hover:not(:disabled){background:var(--acd)}
 #fr-rep-all:disabled{background:var(--acb);border-color:var(--acb);color:#fff}
 #fr-status{font-size:11px;color:var(--t2);min-height:14px;text-align:right}
+.fr-hl{background:#ffe58f;border-radius:2px;padding:0 1px;color:inherit}
+.fr-hl-cur{background:#ff9800;color:#fff;border-radius:2px;padding:0 1px}
 </style>
 </head>
 <body>
@@ -952,6 +954,8 @@ var _multiSel = [];          /* array of block IDs in multi-selection */
 var _multiSelAnchor = null;  /* anchor block ID for shift-range select */
 var _frMatches = [];         /* [{bid, nth}] one entry per match occurrence */
 var _frCursor  = -1;         /* index into _frMatches, current match */
+var _frMarkEls = [];         /* <mark> elements injected into editor DOM for current search */
+var _frHighlightedEls = [];  /* block root elements that were highlighted (for normalize on clear) */
 var _ctxId   = null;
 var _dlgType = null;
 var _tblH    = [];
@@ -2128,6 +2132,92 @@ function _frGetScope() {
   return null;
 }
 
+/* ── DOM highlight helpers ── */
+
+/* Remove all injected <mark> elements and restore plain text nodes */
+function _frClearHighlights() {
+  _frMarkEls.forEach(function(mark) {
+    if (!mark.parentNode) return;
+    mark.parentNode.replaceChild(document.createTextNode(mark.textContent), mark);
+  });
+  _frMarkEls = [];
+  /* Merge fragmented text nodes left by unwrapping */
+  _frHighlightedEls.forEach(function(el) { try { el.normalize(); } catch(e){} });
+  _frHighlightedEls = [];
+}
+
+/* Return all text nodes inside el, skipping nodes inside already-injected marks */
+function _frTextNodes(el) {
+  var nodes = [];
+  var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(node) {
+      var p = node.parentNode;
+      while (p && p !== el) {
+        if (p.nodeName === 'MARK' && p.classList && p.classList.contains('fr-hl'))
+          return NodeFilter.FILTER_REJECT;
+        p = p.parentNode;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  }, false);
+  var n;
+  while ((n = walker.nextNode())) nodes.push(n);
+  return nodes;
+}
+
+/* Wrap every pat match inside el with a <mark class="fr-hl">; push marks into markEls */
+function _frHighlightInEl(el, pat, markEls) {
+  var nodes = _frTextNodes(el);
+  nodes.forEach(function(node) {
+    var text = node.nodeValue;
+    pat.lastIndex = 0;
+    var parts = [];
+    var lastIdx = 0;
+    var m;
+    while ((m = pat.exec(text)) !== null) {
+      if (m[0].length === 0) { pat.lastIndex++; continue; }
+      if (m.index > lastIdx) parts.push(document.createTextNode(text.slice(lastIdx, m.index)));
+      var mark = document.createElement('mark');
+      mark.className = 'fr-hl';
+      mark.textContent = m[0];
+      parts.push(mark);
+      markEls.push(mark);
+      lastIdx = m.index + m[0].length;
+    }
+    if (!parts.length) return;
+    if (lastIdx < text.length) parts.push(document.createTextNode(text.slice(lastIdx)));
+    var frag = document.createDocumentFragment();
+    parts.forEach(function(p) { frag.appendChild(p); });
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+
+/* Inject highlights for all current matches into the editor DOM */
+function _frHighlightAll() {
+  _frClearHighlights();
+  if (!_frMatches.length) return;
+  var pat = _frBuildPat($id('fr-find').value, $id('fr-regex').checked, $id('fr-case').checked);
+  if (!pat) return;
+  var done = {};
+  _frMatches.forEach(function(m) {
+    if (done[m.bid]) return; done[m.bid] = true;
+    var el = $id(m.bid); if (!el) return;
+    _frHighlightedEls.push(el);
+    _frHighlightInEl(el, pat, _frMarkEls);
+  });
+  _frUpdateCursor();
+}
+
+/* Mark the current match with fr-hl-cur and scroll it into view */
+function _frUpdateCursor() {
+  _frMarkEls.forEach(function(m) { m.classList.remove('fr-hl-cur'); });
+  if (_frCursor >= 0 && _frCursor < _frMarkEls.length) {
+    var cur = _frMarkEls[_frCursor];
+    cur.classList.add('fr-hl-cur');
+    cur.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+}
+
 /* Rebuild _frMatches for current search term & options */
 function _frCollect() {
   var findStr = $id('fr-find').value;
@@ -2178,7 +2268,7 @@ function _frUpdateUI() {
 function _frGoto(idx) {
   if (_frMatches.length === 0) return;
   _frCursor = ((idx % _frMatches.length) + _frMatches.length) % _frMatches.length;
-  setSelected(_frMatches[_frCursor].bid);
+  _frUpdateCursor();
   _frUpdateUI();
 }
 
@@ -2230,11 +2320,12 @@ function openFR() {
   $id('fr-status').textContent = '';
   _frCollect();
   if (_frMatches.length > 0 && _frCursor < 0) _frCursor = 0;
+  _frHighlightAll();
   _frUpdateUI();
   setTimeout(function() { var fi = $id('fr-find'); fi.focus(); fi.select(); }, 50);
 }
 
-function closeFR() { $id('fr-overlay').classList.remove('open'); }
+function closeFR() { _frClearHighlights(); $id('fr-overlay').classList.remove('open'); }
 
 /* ── Wire FR events ── */
 (function() {
@@ -2245,7 +2336,8 @@ function closeFR() { $id('fr-overlay').classList.remove('open'); }
   function onFindChange() {
     _frCursor = 0;
     _frCollect();
-    if (_frMatches.length > 0) _frGoto(0); else _frUpdateUI();
+    _frHighlightAll();
+    _frUpdateUI();
     $id('fr-status').textContent = '';
   }
   $id('fr-find').addEventListener('input', onFindChange);
@@ -2269,15 +2361,17 @@ function closeFR() { $id('fr-overlay').classList.remove('open'); }
     var b = _blocks.find(function(x) { return x.id === m.bid; }); if (!b) return;
     var pat = _frBuildPat($id('fr-find').value, $id('fr-regex').checked, $id('fr-case').checked);
     if (!pat) return;
+    _frClearHighlights();  /* remove marks before rebuilding block DOM */
     _frReplaceNth(b, pat, $id('fr-replace').value, m.nth);
     _frRebuildBlock(b);
     syncCode(); schedPv();
     $id('fr-status').textContent = '已替换 1 处';
     _frCollect();
-    /* Re-position cursor: clamp to new total, then navigate */
-    if (_frMatches.length === 0) { _frUpdateUI(); return; }
+    /* Re-position cursor: clamp to new total, then re-highlight */
+    if (_frMatches.length === 0) { _frHighlightAll(); _frUpdateUI(); return; }
     if (_frCursor >= _frMatches.length) _frCursor = 0;
-    _frGoto(_frCursor);
+    _frHighlightAll();
+    _frUpdateUI();
   });
 
   $id('fr-rep-all').addEventListener('click', function() {
@@ -2285,6 +2379,7 @@ function closeFR() { $id('fr-overlay').classList.remove('open'); }
     if (!pat || _frMatches.length === 0) return;
     var repl = $id('fr-replace').value;
     var totalReplaced = _frMatches.length;
+    _frClearHighlights();  /* remove marks before rebuilding block DOMs */
     var seen = {};
     _frMatches.forEach(function(m) {
       if (seen[m.bid]) return; seen[m.bid] = true;
@@ -2296,6 +2391,7 @@ function closeFR() { $id('fr-overlay').classList.remove('open'); }
     $id('fr-status').textContent = '已替换 ' + totalReplaced + ' 处';
     _frCursor = 0;
     _frCollect();
+    _frHighlightAll();
     _frUpdateUI();
   });
 }());
