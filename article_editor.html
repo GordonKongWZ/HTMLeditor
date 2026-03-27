@@ -74,6 +74,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 .bi:hover{border-color:var(--acb)}
 .bi.sel{border-color:var(--ac);background:rgba(38,68,186,.03)}
+.bi.msel{border-color:var(--ac);background:rgba(38,68,186,.09)}
 
 /* Block controls (left gutter) */
 .bctrl{
@@ -861,6 +862,8 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
    ========================================================= */
 var _blocks  = [];
 var _sel     = null;
+var _multiSel = [];          /* array of block IDs in multi-selection */
+var _multiSelAnchor = null;  /* anchor block ID for shift-range select */
 var _ctxId   = null;
 var _dlgType = null;
 var _tblH    = [];
@@ -1579,7 +1582,19 @@ function _buildBlockEl(b) {
   el.appendChild(inner);
 
   // ── Events ──
-  el.addEventListener('click', function(){ setSelected(b.id); });
+  el.addEventListener('mousedown', function(e) {
+    /* When multi-select is active, or a modifier key signals a multi-select
+       gesture, prevent focus from moving into inner editors. */
+    if (_multiSel.length > 0 || e.ctrlKey || e.metaKey || e.shiftKey) {
+      e.preventDefault();
+    }
+  });
+  el.addEventListener('click', function(e) {
+    if (e.ctrlKey || e.metaKey) { toggleMultiSel(b.id); return; }
+    if (e.shiftKey)              { rangeMultiSel(b.id);  return; }
+    if (_multiSel.length > 0)    { clearMultiSel(); }
+    setSelected(b.id);
+  });
   el.addEventListener('contextmenu', function(e){ e.preventDefault(); _openCtx(e, b.id); });
   el.addEventListener('dragover', function(e) {
     if (!_draggingId || _draggingId === b.id) return;
@@ -1905,6 +1920,7 @@ function _refreshInner(b) {
    SELECTION
    ========================================================= */
 function setSelected(id) {
+  if (id && _multiSel.length > 0) clearMultiSel();
   if (_sel) { var p=$id(_sel); if(p) p.classList.remove('sel'); }
   _sel = id;
   if (id) { var el=$id(id); if(el) el.classList.add('sel'); }
@@ -1915,6 +1931,54 @@ function setSelected(id) {
     var tnEl = $id('tn-' + id);
     if (tnEl) { var tnHdr = tnEl.querySelector('.tn-hdr'); if (tnHdr) tnHdr.classList.add('tn-sel'); }
   }
+}
+
+/* ── Multi-select helpers ── */
+function clearMultiSel() {
+  _multiSel.forEach(function(id) { var el = $id(id); if (el) el.classList.remove('msel'); });
+  _multiSel = [];
+  _multiSelAnchor = null;
+}
+
+function toggleMultiSel(id) {
+  /* Clear single selection when entering multi-select mode */
+  if (_sel) { var p = $id(_sel); if (p) p.classList.remove('sel'); _sel = null; }
+  var idx = _multiSel.indexOf(id);
+  if (idx >= 0) {
+    _multiSel.splice(idx, 1);
+    var el = $id(id); if (el) el.classList.remove('msel');
+    if (_multiSel.length === 0) _multiSelAnchor = null;
+  } else {
+    if (_multiSel.length === 0) _multiSelAnchor = id;
+    _multiSel.push(id);
+    var el = $id(id); if (el) el.classList.add('msel');
+  }
+}
+
+function rangeMultiSel(id) {
+  var anchor = _multiSelAnchor || _sel;
+  /* Clear single selection */
+  if (_sel) { var p = $id(_sel); if (p) p.classList.remove('sel'); _sel = null; }
+  if (!anchor) {
+    /* No anchor yet — treat as first toggle */
+    _multiSelAnchor = id;
+    _multiSel.push(id);
+    var el = $id(id); if (el) el.classList.add('msel');
+    return;
+  }
+  var ai = _blocks.findIndex(function(b) { return b.id === anchor; });
+  var ti = _blocks.findIndex(function(b) { return b.id === id; });
+  if (ai < 0 || ti < 0) return;
+  /* Remove previous msel visuals */
+  _multiSel.forEach(function(mid) { var el = $id(mid); if (el) el.classList.remove('msel'); });
+  _multiSel = [];
+  var lo = Math.min(ai, ti), hi = Math.max(ai, ti);
+  for (var i = lo; i <= hi; i++) {
+    _multiSel.push(_blocks[i].id);
+    var el = $id(_blocks[i].id); if (el) el.classList.add('msel');
+  }
+  /* Keep anchor fixed for subsequent shift-clicks */
+  _multiSelAnchor = anchor;
 }
 
 /* =========================================================
@@ -2802,7 +2866,7 @@ $id('export-next-overlay').addEventListener('click', function(e) {
 });
 $id('export-next-confirm').addEventListener('click', function() {
   $id('export-next-overlay').classList.remove('open');
-  _blocks=[]; _sel=null;
+  _blocks=[]; _sel=null; clearMultiSel();
   $id('blist').innerHTML=''; _updateCount();
   $id('ctarea').value=''; $id('cchars').textContent='0 chars';
   doPv();
@@ -2848,7 +2912,7 @@ $id('btn-import').addEventListener('click',function(){
 });
 $id('btn-clear').addEventListener('click',function(){
   if(_blocks.length && !confirm('确定清空所有块？')) return;
-  _blocks=[]; _sel=null;
+  _blocks=[]; _sel=null; clearMultiSel();
   $id('blist').innerHTML=''; _updateCount();
   $id('ctarea').value=''; $id('cchars').textContent='0 chars';
   doPv();
@@ -3770,6 +3834,7 @@ document.addEventListener('keydown', function(e) {
     if ($id('export-next-overlay').classList.contains('open')) { $id('export-next-overlay').classList.remove('open'); return; }
     if ($id('paste-overlay').classList.contains('open')) { closePasteDlg(); return; }
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
+    if (_multiSel.length > 0) { clearMultiSel(); return; }
     if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
     return;
   }
@@ -3808,7 +3873,15 @@ document.addEventListener('keydown', function(e) {
     case 'ArrowUp':   if (_sel) { e.preventDefault(); moveBlock(_sel, -1); } return;
     case 'ArrowDown': if (_sel) { e.preventDefault(); moveBlock(_sel,  1); } return;
     case 'Delete':
-    case 'Backspace': if (_sel) { e.preventDefault(); deleteBlock(_sel); }   return;
+    case 'Backspace':
+      if (_multiSel.length > 0) {
+        e.preventDefault();
+        var ids = _multiSel.slice(); clearMultiSel();
+        ids.forEach(function(id) { deleteBlock(id); });
+        return;
+      }
+      if (_sel) { e.preventDefault(); deleteBlock(_sel); }
+      return;
     case '?': e.preventDefault(); openShortcutHelp(); return;
   }
 
