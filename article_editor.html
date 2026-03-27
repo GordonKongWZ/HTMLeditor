@@ -4375,11 +4375,11 @@ document.addEventListener('keydown', function(e) {
     if ($id('export-next-overlay').classList.contains('open')) { $id('export-next-overlay').classList.remove('open'); return; }
     if ($id('paste-overlay').classList.contains('open')) { closePasteDlg(); return; }
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
-    if ($id('fr-overlay').classList.contains('open')) { closeFR(); return; }
-    if (_multiSel.length > 0) { clearMultiSel(); return; }
     if (_isEditingText() && document.activeElement && document.activeElement.isContentEditable) {
       document.activeElement.blur(); return;
     }
+    if ($id('fr-overlay').classList.contains('open')) { closeFR(); return; }
+    if (_multiSel.length > 0) { clearMultiSel(); return; }
     if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
     return;
   }
