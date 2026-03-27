@@ -2029,7 +2029,18 @@ function clearMultiSel() {
 }
 
 function toggleMultiSel(id) {
-  /* Clear single selection when entering multi-select mode */
+  /* When first entering multi-select: also pull in the currently selected /
+     editing block so it is not silently dropped, and blur any active editor. */
+  if (_multiSel.length === 0 && _sel && _sel !== id) {
+    var selEl = $id(_sel); if (selEl) selEl.classList.add('msel');
+    _multiSel.push(_sel);
+    _multiSelAnchor = _sel;
+  }
+  /* Exit editing mode so we do not accidentally keep focus inside a rich-be */
+  if (document.activeElement && document.activeElement.isContentEditable) {
+    document.activeElement.blur();
+  }
+  /* Clear single selection indicator */
   if (_sel) { var p = $id(_sel); if (p) p.classList.remove('sel'); _sel = null; }
   var idx = _multiSel.indexOf(id);
   if (idx >= 0) {
@@ -2045,6 +2056,10 @@ function toggleMultiSel(id) {
 
 function rangeMultiSel(id) {
   var anchor = _multiSelAnchor || _sel;
+  /* Exit editing mode */
+  if (document.activeElement && document.activeElement.isContentEditable) {
+    document.activeElement.blur();
+  }
   /* Clear single selection */
   if (_sel) { var p = $id(_sel); if (p) p.classList.remove('sel'); _sel = null; }
   if (!anchor) {
