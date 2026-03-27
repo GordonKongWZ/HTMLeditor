@@ -2717,7 +2717,7 @@ $id('btn-clear').addEventListener('click',function(){
   _blocks=[]; _sel=null;
   $id('blist').innerHTML=''; _updateCount();
   $id('ctarea').value=''; $id('cchars').textContent='0 chars';
-  $id('pframe').src='about:blank';
+  doPv();
   syncTree();
 });
 
