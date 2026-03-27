@@ -594,17 +594,17 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
 
 /* ── Find & Replace Dialog ── */
 #fr-overlay{
-  display:none;position:fixed;inset:0;z-index:3000;
-  background:rgba(0,0,0,.38);align-items:flex-start;justify-content:center;padding-top:72px
+  display:none;position:fixed;inset:0;z-index:3000;pointer-events:none
 }
-#fr-overlay.open{display:flex}
+#fr-overlay.open{display:block}
 #fr-box{
-  background:#fff;border-radius:var(--r12);box-shadow:0 8px 40px rgba(0,0,0,.18);
-  width:480px;max-width:calc(100vw - 32px);overflow:hidden
+  background:#fff;border-radius:var(--r12);box-shadow:0 8px 40px rgba(0,0,0,.22);
+  width:480px;max-width:calc(100vw - 32px);overflow:hidden;
+  position:absolute;top:72px;right:20px;pointer-events:auto
 }
 #fr-head{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px 10px;border-bottom:1px solid var(--bl)
+  padding:12px 16px 10px;border-bottom:1px solid var(--bl);cursor:move;user-select:none
 }
 #fr-head>span{font-weight:600;font-size:14px;color:var(--t0)}
 #fr-close-btn{
@@ -927,7 +927,7 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <div class="fr-opts">
         <label class="fr-opt" id="fr-regex-wrap"><input type="checkbox" id="fr-regex"> 正则</label>
         <label class="fr-opt" id="fr-case-wrap"><input type="checkbox" id="fr-case"> 区分大小写</label>
-        <label class="fr-opt" id="fr-scope-wrap"><input type="checkbox" id="fr-scope"> 仅多选块</label>
+        <label class="fr-opt" id="fr-scope-wrap"><input type="checkbox" id="fr-scope"> 选择范围内</label>
       </div>
       <div class="fr-acts">
         <button class="fr-btn" id="fr-prev">◀ 上一个</button>
@@ -956,6 +956,11 @@ var _frMatches = [];         /* [{bid, nth}] one entry per match occurrence */
 var _frCursor  = -1;         /* index into _frMatches, current match */
 var _frMarkEls = [];         /* <mark> elements injected into editor DOM for current search */
 var _frHighlightedEls = [];  /* block root elements that were highlighted (for normalize on clear) */
+var _frPreviewMarkEls = [];        /* <mark> elements injected into preview iframe */
+var _frPreviewHighlightedEls = []; /* elements in preview that have been highlighted */
+var _frEditTimer = null;           /* debounce: re-highlight after user finishes editing */
+var _frFocusInCb = null;           /* focusin listener, stored for removal on close */
+var _frFocusOutCb = null;          /* focusout listener, stored for removal on close */
 var _ctxId   = null;
 var _dlgType = null;
 var _tblH    = [];
@@ -2144,12 +2149,26 @@ function _frClearHighlights() {
   /* Merge fragmented text nodes left by unwrapping */
   _frHighlightedEls.forEach(function(el) { try { el.normalize(); } catch(e){} });
   _frHighlightedEls = [];
+  /* Clear preview highlights too */
+  _frClearPreviewHighlights();
+}
+
+/* Remove all injected <mark> elements from the preview iframe */
+function _frClearPreviewHighlights() {
+  _frPreviewMarkEls.forEach(function(mark) {
+    if (!mark.parentNode) return;
+    mark.parentNode.replaceChild(mark.ownerDocument.createTextNode(mark.textContent), mark);
+  });
+  _frPreviewMarkEls = [];
+  _frPreviewHighlightedEls.forEach(function(el) { try { el.normalize(); } catch(e){} });
+  _frPreviewHighlightedEls = [];
 }
 
 /* Return all text nodes inside el, skipping nodes inside already-injected marks */
 function _frTextNodes(el) {
+  var ownerDoc = el.ownerDocument || document;
   var nodes = [];
-  var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+  var walker = ownerDoc.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: function(node) {
       var p = node.parentNode;
       while (p && p !== el) {
@@ -2167,6 +2186,7 @@ function _frTextNodes(el) {
 
 /* Wrap every pat match inside el with a <mark class="fr-hl">; push marks into markEls */
 function _frHighlightInEl(el, pat, markEls) {
+  var ownerDoc = el.ownerDocument || document;
   var nodes = _frTextNodes(el);
   nodes.forEach(function(node) {
     var text = node.nodeValue;
@@ -2176,8 +2196,8 @@ function _frHighlightInEl(el, pat, markEls) {
     var m;
     while ((m = pat.exec(text)) !== null) {
       if (m[0].length === 0) { pat.lastIndex++; continue; }
-      if (m.index > lastIdx) parts.push(document.createTextNode(text.slice(lastIdx, m.index)));
-      var mark = document.createElement('mark');
+      if (m.index > lastIdx) parts.push(ownerDoc.createTextNode(text.slice(lastIdx, m.index)));
+      var mark = ownerDoc.createElement('mark');
       mark.className = 'fr-hl';
       mark.textContent = m[0];
       parts.push(mark);
@@ -2185,8 +2205,8 @@ function _frHighlightInEl(el, pat, markEls) {
       lastIdx = m.index + m[0].length;
     }
     if (!parts.length) return;
-    if (lastIdx < text.length) parts.push(document.createTextNode(text.slice(lastIdx)));
-    var frag = document.createDocumentFragment();
+    if (lastIdx < text.length) parts.push(ownerDoc.createTextNode(text.slice(lastIdx)));
+    var frag = ownerDoc.createDocumentFragment();
     parts.forEach(function(p) { frag.appendChild(p); });
     node.parentNode.replaceChild(frag, node);
   });
@@ -2208,6 +2228,37 @@ function _frHighlightAll() {
   _frUpdateCursor();
 }
 
+/* Inject highlights for all current matches into the preview iframe */
+function _frHighlightPreview() {
+  _frClearPreviewHighlights();
+  if (!_frMatches.length) return;
+  var pat = _frBuildPat($id('fr-find').value, $id('fr-regex').checked, $id('fr-case').checked);
+  if (!pat) return;
+  var frame = $id('pframe');
+  var pvDoc;
+  try { pvDoc = frame.contentDocument || frame.contentWindow.document; } catch(e) { return; }
+  if (!pvDoc || !pvDoc.body) return;
+  /* Inject preview-only highlight CSS once */
+  if (!pvDoc.getElementById('fr-hl-style')) {
+    var s = pvDoc.createElement('style'); s.id = 'fr-hl-style';
+    s.textContent = '.fr-hl{background:#ffe58f;border-radius:2px;padding:0 1px;color:inherit}.fr-hl-cur{background:#ff9800;color:#fff;border-radius:2px;padding:0 1px}';
+    (pvDoc.head || pvDoc.documentElement).appendChild(s);
+  }
+  var done = {};
+  _frMatches.forEach(function(m) {
+    if (done[m.bid]) return; done[m.bid] = true;
+    var el = pvDoc.querySelector('[data-bid="' + m.bid + '"]'); if (!el) return;
+    _frPreviewHighlightedEls.push(el);
+    _frHighlightInEl(el, pat, _frPreviewMarkEls, pvDoc);
+  });
+  /* Apply cursor in preview */
+  if (_frCursor >= 0 && _frCursor < _frPreviewMarkEls.length) {
+    var pvCur = _frPreviewMarkEls[_frCursor];
+    pvCur.classList.add('fr-hl-cur');
+    try { pvCur.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } catch(e) {}
+  }
+}
+
 /* Mark the current match with fr-hl-cur and scroll it into view */
 function _frUpdateCursor() {
   _frMarkEls.forEach(function(m) { m.classList.remove('fr-hl-cur'); });
@@ -2215,6 +2266,13 @@ function _frUpdateCursor() {
     var cur = _frMarkEls[_frCursor];
     cur.classList.add('fr-hl-cur');
     cur.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+  /* Update cursor in preview (if preview marks exist) */
+  _frPreviewMarkEls.forEach(function(m) { m.classList.remove('fr-hl-cur'); });
+  if (_frCursor >= 0 && _frCursor < _frPreviewMarkEls.length) {
+    var pvCur = _frPreviewMarkEls[_frCursor];
+    pvCur.classList.add('fr-hl-cur');
+    try { pvCur.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } catch(e) {}
   }
 }
 
@@ -2322,16 +2380,79 @@ function openFR() {
   if (_frMatches.length > 0 && _frCursor < 0) _frCursor = 0;
   _frHighlightAll();
   _frUpdateUI();
+  /* Attach non-blocking edit listeners if not already attached */
+  if (!_frFocusInCb) {
+    var blist = $id('blist');
+    _frFocusInCb = function(e) {
+      var ce = e.target && e.target.closest && e.target.closest('[contenteditable]');
+      if (!ce) return;
+      clearTimeout(_frEditTimer);
+      _frClearHighlights(); /* remove marks before user types so they don't corrupt b.content */
+    };
+    _frFocusOutCb = function(e) {
+      var ce = e.target && e.target.closest && e.target.closest('[contenteditable]');
+      if (!ce) return;
+      clearTimeout(_frEditTimer);
+      _frEditTimer = setTimeout(function() {
+        if ($id('fr-overlay').classList.contains('open')) {
+          _frCollect(); _frHighlightAll();
+          /* Re-highlight preview if it wasn't rewritten during the edit */
+          if (_frPreviewMarkEls.length === 0 && _frMatches.length > 0) _frHighlightPreview();
+        }
+      }, 400);
+    };
+    blist.addEventListener('focusin',  _frFocusInCb);
+    blist.addEventListener('focusout', _frFocusOutCb);
+  }
   setTimeout(function() { var fi = $id('fr-find'); fi.focus(); fi.select(); }, 50);
 }
 
-function closeFR() { _frClearHighlights(); $id('fr-overlay').classList.remove('open'); }
+function closeFR() {
+  clearTimeout(_frEditTimer);
+  if (_frFocusInCb) {
+    var blist = $id('blist');
+    blist.removeEventListener('focusin',  _frFocusInCb);
+    blist.removeEventListener('focusout', _frFocusOutCb);
+    _frFocusInCb = null; _frFocusOutCb = null;
+  }
+  _frClearHighlights();
+  $id('fr-overlay').classList.remove('open');
+}
 
 /* ── Wire FR events ── */
 (function() {
   $id('fr-close-btn').addEventListener('click', closeFR);
-  $id('fr-overlay').addEventListener('click', function(e) { if (e.target === this) closeFR(); });
+  /* Backdrop click removed: dialog is non-modal/floating now */
   $id('btn-fr').addEventListener('click', openFR);
+
+  /* Drag support for the dialog via its header */
+  (function() {
+    var box = $id('fr-box');
+    var head = $id('fr-head');
+    var dragging = false, ox = 0, oy = 0, bx = 0, by = 0, bw = 0, bh = 0;
+    head.addEventListener('mousedown', function(e) {
+      if (e.button !== 0 || e.target.closest('button')) return;
+      dragging = true;
+      var r = box.getBoundingClientRect();
+      ox = e.clientX; oy = e.clientY; bx = r.left; by = r.top;
+      bw = box.offsetWidth; bh = box.offsetHeight;
+      /* Switch to explicit top/left so right: auto doesn't fight us */
+      box.style.right = 'auto';
+      box.style.left = bx + 'px';
+      box.style.top  = by + 'px';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      var nx = bx + (e.clientX - ox);
+      var ny = by + (e.clientY - oy);
+      nx = Math.max(0, Math.min(window.innerWidth  - bw, nx));
+      ny = Math.max(0, Math.min(window.innerHeight - bh, ny));
+      box.style.left = nx + 'px';
+      box.style.top  = ny + 'px';
+    });
+    document.addEventListener('mouseup', function() { dragging = false; });
+  }());
 
   function onFindChange() {
     _frCursor = 0;
@@ -2764,6 +2885,10 @@ function doPv() {
   if (doc) {
     doc.open(); doc.write(html); doc.close();
     _attachPvContextMenu();
+    /* Re-inject search highlights in preview after each re-render */
+    if ($id('fr-overlay').classList.contains('open') && _frMatches.length) {
+      _frHighlightPreview();
+    }
     if (pendingBid) {
       setTimeout(function(){ scrollPreviewToBlock(pendingBid); }, 50);
     } else if (scrollX||scrollY) {
@@ -4226,8 +4351,7 @@ function _isModalOpen() {
   return $id('doverlay').classList.contains('open') ||
          $id('sc-overlay').classList.contains('open') ||
          $id('paste-overlay').classList.contains('open') ||
-         $id('export-next-overlay').classList.contains('open') ||
-         $id('fr-overlay').classList.contains('open');
+         $id('export-next-overlay').classList.contains('open');
 }
 
 /* Intercept paste (Ctrl+V) when not editing text */
