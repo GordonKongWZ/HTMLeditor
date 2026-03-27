@@ -821,8 +821,8 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <label class="copy-opt">
         <input type="checkbox" id="copy-no-top-gap">
         <div class="copy-opt-text">
-          <div class="copy-opt-label">去除顶部空距</div>
-          <div class="copy-opt-desc">移除 H1 标题和作者块上方的内外边距</div>
+          <div class="copy-opt-label">去除顶部标题</div>
+          <div class="copy-opt-desc">删除 H1 标题块并去除作者块上边距</div>
         </div>
       </label>
     </div>
@@ -2068,7 +2068,7 @@ function buildCopyHTML(opts) {
     html = html.replace(/<script\b[\s\S]*?<\/script>\s*/g, '');
   }
   if (opts.noTopGap) {
-    html = html.replace(/(\.ar\{[^}]*?padding:)[\d.]+rem /, '$10 ');
+    html = html.replace(/<h1\b[^>]*>[\s\S]*?<\/h1>\s*/g, '');
     html = html.replace(/(\.paper-authors\{[^}]*?margin:)[\d.]+rem /, '$10 ');
   }
   return html;
@@ -2759,8 +2759,20 @@ document.querySelectorAll('[data-dialog]').forEach(function(btn){
    TOP BAR
    ========================================================= */
 $id('btn-export').addEventListener('click',function(){
+  var fname = 'article';
+  var h1b = _blocks.find(function(b){ return b.type === 'h1'; });
+  if (h1b && h1b.content && h1b.content.trim()) {
+    fname = h1b.content.trim().replace(/[\\/:*?"<>|]/g, '');
+  } else {
+    var pb = _blocks.find(function(b){ return b.type === 'p'; });
+    if (pb && pb.content) {
+      var txt = pb.content.replace(/<[^>]+>/g, '').trim();
+      if (txt) fname = txt.slice(0, 12).replace(/[\\/:*?"<>|]/g, '');
+    }
+  }
+  if (!fname) fname = 'article';
   var blob=new Blob([$id('ctarea').value],{type:'text/html'});
-  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='article.html'; a.click();
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname+'.html'; a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
 });
 $id('btn-copy').addEventListener('click', function() {
