@@ -591,6 +591,54 @@ kbd{
 kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font-style:italic}
 .sc-unbound-lbl{font-size:11px;color:var(--t2);font-style:italic}
 .sc-hint{font-size:10px;color:var(--t2);margin-top:14px;text-align:center;padding-top:10px;border-top:1px solid var(--bl)}
+
+/* ── Find & Replace Dialog ── */
+#fr-overlay{
+  display:none;position:fixed;inset:0;z-index:3000;
+  background:rgba(0,0,0,.38);align-items:flex-start;justify-content:center;padding-top:72px
+}
+#fr-overlay.open{display:flex}
+#fr-box{
+  background:#fff;border-radius:var(--r12);box-shadow:0 8px 40px rgba(0,0,0,.18);
+  width:480px;max-width:calc(100vw - 32px);overflow:hidden
+}
+#fr-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px 10px;border-bottom:1px solid var(--bl)
+}
+#fr-head>span{font-weight:600;font-size:14px;color:var(--t0)}
+#fr-close-btn{
+  border:none;background:transparent;font-size:16px;color:var(--t2);cursor:pointer;
+  padding:2px 6px;border-radius:var(--r4);line-height:1;transition:all .1s
+}
+#fr-close-btn:hover{background:var(--bg2);color:var(--t0)}
+#fr-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.fr-row{display:flex;align-items:center;gap:8px}
+.fr-lbl{font-size:12px;color:var(--t1);width:36px;flex-shrink:0;text-align:right}
+.fr-iw{flex:1;display:flex;align-items:center;gap:6px}
+.fr-inp{
+  flex:1;padding:5px 8px;font-size:13px;font-family:var(--fs);
+  border:1px solid var(--bm);border-radius:var(--r4);outline:none;
+  transition:border-color .15s;box-sizing:border-box
+}
+.fr-inp:focus{border-color:var(--acm)}
+.fr-inp.fr-err{border-color:#e74c3c}
+#fr-count{font-size:11px;color:var(--t2);white-space:nowrap;min-width:48px}
+.fr-opts{display:flex;gap:14px;flex-wrap:wrap;padding-left:44px}
+.fr-opt{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--t1);cursor:pointer;user-select:none}
+.fr-opt input{cursor:pointer}
+.fr-opt.fr-disabled{color:var(--t2);pointer-events:none;opacity:.5}
+.fr-acts{display:flex;gap:6px;flex-wrap:wrap}
+.fr-btn{
+  padding:5px 12px;font-size:12px;font-family:var(--fs);border-radius:var(--r4);
+  border:1px solid var(--bm);background:var(--bg1);color:var(--t0);cursor:pointer;transition:all .1s
+}
+.fr-btn:hover:not(:disabled){background:var(--bg2)}
+.fr-btn:disabled{color:var(--t2);cursor:default}
+#fr-rep-all{background:var(--ac);border-color:var(--acd);color:#fff}
+#fr-rep-all:hover:not(:disabled){background:var(--acd)}
+#fr-rep-all:disabled{background:var(--acb);border-color:var(--acb);color:#fff}
+#fr-status{font-size:11px;color:var(--t2);min-height:14px;text-align:right}
 </style>
 </head>
 <body>
@@ -612,6 +660,7 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <button class="tbtn" id="btn-clear">🗑 清空</button>
   <div class="vsep"></div>
   <button class="tbtn" id="btn-shortcuts" title="键盘快捷键 (?)" aria-label="键盘快捷键">⌨ 快捷键</button>
+  <button class="tbtn" id="btn-fr" title="查找与替换 (Ctrl+F)">🔍 查找</button>
   <div class="spacer"></div>
   <span style="font-size:11px;color:var(--t2)" id="bcount">0 个块</span>
 </div>
@@ -852,6 +901,43 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   </div>
 </div>
 
+<!-- Find & Replace Dialog -->
+<div id="fr-overlay">
+  <div id="fr-box">
+    <div id="fr-head">
+      <span>🔍 查找与替换</span>
+      <button id="fr-close-btn" aria-label="关闭查找替换">✕</button>
+    </div>
+    <div id="fr-body">
+      <div class="fr-row">
+        <span class="fr-lbl">查找</span>
+        <div class="fr-iw">
+          <input id="fr-find" class="fr-inp" type="text" placeholder="查找内容…" autocomplete="off" spellcheck="false">
+          <span id="fr-count"></span>
+        </div>
+      </div>
+      <div class="fr-row">
+        <span class="fr-lbl">替换</span>
+        <div class="fr-iw">
+          <input id="fr-replace" class="fr-inp" type="text" placeholder="替换为（留空则删除）…" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="fr-opts">
+        <label class="fr-opt" id="fr-regex-wrap"><input type="checkbox" id="fr-regex"> 正则</label>
+        <label class="fr-opt" id="fr-case-wrap"><input type="checkbox" id="fr-case"> 区分大小写</label>
+        <label class="fr-opt" id="fr-scope-wrap"><input type="checkbox" id="fr-scope"> 仅多选块</label>
+      </div>
+      <div class="fr-acts">
+        <button class="fr-btn" id="fr-prev">◀ 上一个</button>
+        <button class="fr-btn" id="fr-next">下一个 ▶</button>
+        <button class="fr-btn" id="fr-rep-one">替换</button>
+        <button class="fr-btn" id="fr-rep-all">全部替换</button>
+      </div>
+      <div id="fr-status"></div>
+    </div>
+  </div>
+</div>
+
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
   onload="window._katexReady=true"></script>
 
@@ -864,6 +950,8 @@ var _blocks  = [];
 var _sel     = null;
 var _multiSel = [];          /* array of block IDs in multi-selection */
 var _multiSelAnchor = null;  /* anchor block ID for shift-range select */
+var _frMatches = [];         /* [{bid, nth}] one entry per match occurrence */
+var _frCursor  = -1;         /* index into _frMatches, current match */
 var _ctxId   = null;
 var _dlgType = null;
 var _tblH    = [];
@@ -1980,6 +2068,222 @@ function rangeMultiSel(id) {
   /* Keep anchor fixed for subsequent shift-clicks */
   _multiSelAnchor = anchor;
 }
+
+/* =========================================================
+   FIND & REPLACE
+   ========================================================= */
+var _FR_RICH = {p:1, blockquote:1, abstract:1, infobox:1};
+
+function _frIsRich(type) { return !!_FR_RICH[type]; }
+
+/* Get plain text of a block for searching */
+function _frGetText(b) {
+  if (_frIsRich(b.type)) {
+    var d = document.createElement('div'); d.innerHTML = b.content;
+    return d.textContent;
+  }
+  return b.content || '';
+}
+
+/* Build a global RegExp from the search term; returns null on invalid regex */
+function _frBuildPat(str, isRegex, isCase) {
+  if (!str) return null;
+  try {
+    var src = isRegex ? str : str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(src, 'g' + (isCase ? '' : 'i'));
+  } catch(e) { return null; }
+}
+
+/* Count occurrences of pat in text (global regex, resets lastIndex) */
+function _frCountText(text, pat) {
+  pat.lastIndex = 0;
+  var n = 0, m, limit = text.length + 1;
+  while ((m = pat.exec(text)) !== null) {
+    n++;
+    if (m[0].length === 0) { pat.lastIndex++; } /* advance past zero-width match */
+    if (n > limit) break; /* safety: never iterate more times than text length */
+  }
+  pat.lastIndex = 0;
+  return n;
+}
+
+/* Return scope block IDs (or null for all blocks) */
+function _frGetScope() {
+  if ($id('fr-scope').checked && _multiSel.length > 0) return _multiSel.slice();
+  return null;
+}
+
+/* Rebuild _frMatches for current search term & options */
+function _frCollect() {
+  var findStr = $id('fr-find').value;
+  var pat = _frBuildPat(findStr, $id('fr-regex').checked, $id('fr-case').checked);
+  $id('fr-find').classList.toggle('fr-err', !!findStr && !pat);
+  if (!pat) { _frMatches = []; _frCursor = -1; return; }
+  var scopeIds = _frGetScope();
+  var matches = [];
+  _blocks.forEach(function(b) {
+    if (scopeIds && scopeIds.indexOf(b.id) < 0) return;
+    var cnt = _frCountText(_frGetText(b), pat);
+    for (var i = 0; i < cnt; i++) matches.push({bid: b.id, nth: i});
+  });
+  _frMatches = matches;
+  if (_frCursor >= _frMatches.length) _frCursor = _frMatches.length > 0 ? _frMatches.length - 1 : -1;
+  if (_frCursor < 0 && _frMatches.length > 0) _frCursor = 0;
+}
+
+/* Update count label and button states */
+function _frUpdateUI() {
+  var total = _frMatches.length;
+  var findStr = $id('fr-find').value;
+  var countEl = $id('fr-count');
+  if (!findStr) {
+    countEl.textContent = '';
+  } else if ($id('fr-find').classList.contains('fr-err')) {
+    countEl.textContent = '无效正则';
+    countEl.style.color = '#c0392b';
+  } else if (total === 0) {
+    countEl.textContent = '无匹配';
+    countEl.style.color = 'var(--t2)';
+  } else {
+    countEl.textContent = (_frCursor >= 0 ? _frCursor + 1 : 0) + '/' + total;
+    countEl.style.color = 'var(--t2)';
+  }
+  var hasMatch = total > 0 && _frCursor >= 0;
+  $id('fr-prev').disabled    = !hasMatch;
+  $id('fr-next').disabled    = !hasMatch;
+  $id('fr-rep-one').disabled = !hasMatch;
+  $id('fr-rep-all').disabled = total === 0;
+  /* Scope checkbox availability */
+  var sw = $id('fr-scope-wrap');
+  if (_multiSel.length === 0) { $id('fr-scope').checked = false; sw.classList.add('fr-disabled'); }
+  else sw.classList.remove('fr-disabled');
+}
+
+/* Navigate to match at index idx (wraps around) */
+function _frGoto(idx) {
+  if (_frMatches.length === 0) return;
+  _frCursor = ((idx % _frMatches.length) + _frMatches.length) % _frMatches.length;
+  setSelected(_frMatches[_frCursor].bid);
+  _frUpdateUI();
+}
+
+/* Replace the nth occurrence in block b; always uses global, literal replacer */
+function _frReplaceNth(b, pat, repl, nth) {
+  var count = 0;
+  var gPat = new RegExp(pat.source, 'g' + (pat.ignoreCase ? 'i' : ''));
+  var replacer = function(match) { return count++ === nth ? repl : match; };
+  if (_frIsRich(b.type)) {
+    var div = document.createElement('div'); div.innerHTML = b.content;
+    var walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT, null, false);
+    var nodes = []; var node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    nodes.forEach(function(n) { gPat.lastIndex = 0; n.nodeValue = n.nodeValue.replace(gPat, replacer); });
+    b.content = div.innerHTML;
+  } else {
+    gPat.lastIndex = 0;
+    b.content = b.content.replace(gPat, replacer);
+  }
+}
+
+/* Replace all occurrences in block b */
+function _frReplaceAllIn(b, pat, repl) {
+  var gPat = new RegExp(pat.source, 'g' + (pat.ignoreCase ? 'i' : ''));
+  if (_frIsRich(b.type)) {
+    var div = document.createElement('div'); div.innerHTML = b.content;
+    var walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT, null, false);
+    var nodes = []; var node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    nodes.forEach(function(n) { gPat.lastIndex = 0; n.nodeValue = n.nodeValue.replace(gPat, repl); });
+    b.content = div.innerHTML;
+  } else {
+    gPat.lastIndex = 0;
+    b.content = b.content.replace(gPat, repl);
+  }
+}
+
+/* Rebuild a block's DOM after content change */
+function _frRebuildBlock(b) {
+  var oldEl = $id(b.id);
+  if (oldEl && oldEl.parentNode) oldEl.parentNode.replaceChild(_buildBlockEl(b), oldEl);
+}
+
+function openFR() {
+  $id('fr-overlay').classList.add('open');
+  var sw = $id('fr-scope-wrap');
+  if (_multiSel.length === 0) { $id('fr-scope').checked = false; sw.classList.add('fr-disabled'); }
+  else sw.classList.remove('fr-disabled');
+  $id('fr-status').textContent = '';
+  _frCollect();
+  if (_frMatches.length > 0 && _frCursor < 0) _frCursor = 0;
+  _frUpdateUI();
+  setTimeout(function() { var fi = $id('fr-find'); fi.focus(); fi.select(); }, 50);
+}
+
+function closeFR() { $id('fr-overlay').classList.remove('open'); }
+
+/* ── Wire FR events ── */
+(function() {
+  $id('fr-close-btn').addEventListener('click', closeFR);
+  $id('fr-overlay').addEventListener('click', function(e) { if (e.target === this) closeFR(); });
+  $id('btn-fr').addEventListener('click', openFR);
+
+  function onFindChange() {
+    _frCursor = 0;
+    _frCollect();
+    if (_frMatches.length > 0) _frGoto(0); else _frUpdateUI();
+    $id('fr-status').textContent = '';
+  }
+  $id('fr-find').addEventListener('input', onFindChange);
+  $id('fr-regex').addEventListener('change', onFindChange);
+  $id('fr-case').addEventListener('change', onFindChange);
+  $id('fr-scope').addEventListener('change', onFindChange);
+
+  $id('fr-find').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); _frGoto(e.shiftKey ? _frCursor - 1 : _frCursor + 1); }
+  });
+  $id('fr-replace').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); $id('fr-rep-one').click(); }
+  });
+
+  $id('fr-prev').addEventListener('click', function() { _frGoto(_frCursor - 1); });
+  $id('fr-next').addEventListener('click', function() { _frGoto(_frCursor + 1); });
+
+  $id('fr-rep-one').addEventListener('click', function() {
+    if (_frMatches.length === 0 || _frCursor < 0) return;
+    var m = _frMatches[_frCursor];
+    var b = _blocks.find(function(x) { return x.id === m.bid; }); if (!b) return;
+    var pat = _frBuildPat($id('fr-find').value, $id('fr-regex').checked, $id('fr-case').checked);
+    if (!pat) return;
+    _frReplaceNth(b, pat, $id('fr-replace').value, m.nth);
+    _frRebuildBlock(b);
+    syncCode(); schedPv();
+    $id('fr-status').textContent = '已替换 1 处';
+    _frCollect();
+    /* Re-position cursor: clamp to new total, then navigate */
+    if (_frMatches.length === 0) { _frUpdateUI(); return; }
+    if (_frCursor >= _frMatches.length) _frCursor = 0;
+    _frGoto(_frCursor);
+  });
+
+  $id('fr-rep-all').addEventListener('click', function() {
+    var pat = _frBuildPat($id('fr-find').value, $id('fr-regex').checked, $id('fr-case').checked);
+    if (!pat || _frMatches.length === 0) return;
+    var repl = $id('fr-replace').value;
+    var totalReplaced = _frMatches.length;
+    var seen = {};
+    _frMatches.forEach(function(m) {
+      if (seen[m.bid]) return; seen[m.bid] = true;
+      var b = _blocks.find(function(x) { return x.id === m.bid; }); if (!b) return;
+      _frReplaceAllIn(b, pat, repl);
+      _frRebuildBlock(b);
+    });
+    syncCode(); schedPv();
+    $id('fr-status').textContent = '已替换 ' + totalReplaced + ' 处';
+    _frCursor = 0;
+    _frCollect();
+    _frUpdateUI();
+  });
+}());
 
 /* =========================================================
    MOVE / DELETE / DUPLICATE
@@ -3811,7 +4115,8 @@ function _isModalOpen() {
   return $id('doverlay').classList.contains('open') ||
          $id('sc-overlay').classList.contains('open') ||
          $id('paste-overlay').classList.contains('open') ||
-         $id('export-next-overlay').classList.contains('open');
+         $id('export-next-overlay').classList.contains('open') ||
+         $id('fr-overlay').classList.contains('open');
 }
 
 /* Intercept paste (Ctrl+V) when not editing text */
@@ -3834,6 +4139,7 @@ document.addEventListener('keydown', function(e) {
     if ($id('export-next-overlay').classList.contains('open')) { $id('export-next-overlay').classList.remove('open'); return; }
     if ($id('paste-overlay').classList.contains('open')) { closePasteDlg(); return; }
     if ($id('sc-overlay').classList.contains('open')) { closeShortcutHelp(); return; }
+    if ($id('fr-overlay').classList.contains('open')) { closeFR(); return; }
     if (_multiSel.length > 0) { clearMultiSel(); return; }
     if (!_isEditingText() && !$id('doverlay').classList.contains('open')) { setSelected(null); }
     return;
@@ -3851,6 +4157,14 @@ document.addEventListener('keydown', function(e) {
       e.preventDefault();
       duplicateBlock(_sel);
     }
+    return;
+  }
+
+  // Ctrl/Meta+F or Ctrl/Meta+H: find & replace
+  if ((e.ctrlKey || e.metaKey) && !e.altKey &&
+      (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')) {
+    e.preventDefault();
+    openFR();
     return;
   }
 
