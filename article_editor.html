@@ -4720,19 +4720,15 @@ function renderClLib() {
     card.appendChild(foot);
     body.appendChild(card);
 
-    /* scale iframe: fit to card width, center vertically after content loads */
+    /* scale iframe: fit to card width, center vertically */
     (function(fr, pv) {
       fr.addEventListener('load', function() {
-        var w = pv.offsetWidth || 150;
+        /* skip the initial blank-page fire that happens before layout is ready */
+        var w = pv.offsetWidth;
+        if (!w) return;
         var pvH = pv.offsetHeight || 110;
-        var contentH = 400;
-        try {
-          var bd = fr.contentDocument && fr.contentDocument.body;
-          if (bd && bd.scrollHeight > 0) contentH = bd.scrollHeight;
-        } catch(e) {}
-        fr.style.height = contentH + 'px';
         var scale = w / 600;
-        var scaledH = contentH * scale;
+        var scaledH = 400 * scale;
         var topOffset = scaledH < pvH ? Math.round((pvH - scaledH) / 2) : 0;
         fr.style.top = topOffset + 'px';
         fr.style.transform = 'scale(' + scale + ')';
