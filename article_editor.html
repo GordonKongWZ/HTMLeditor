@@ -4569,14 +4569,12 @@ function _pvCtxMenuHandler(e) {
 function _pvClickHandler(e) {
   _closeAllCtxMenus();
   var fdoc = _pvCtxMenuDoc;
-  /* If a cross-block text selection just happened in the preview (_pvSelHandler fired
-     and set _multiSel), don't override it with a single-block click. */
-  if (_multiSel.length > 1) {
-    try {
-      var sel = fdoc && fdoc.defaultView && fdoc.defaultView.getSelection();
-      if (sel && !sel.isCollapsed) return; /* selection active — keep multi-select */
-    } catch(e) {}
-  }
+  /* If a text selection (single- or multi-block) just happened in the preview,
+     don't override it with a click — the mouseup that ends a drag also fires a click. */
+  try {
+    var sel = fdoc && fdoc.defaultView && fdoc.defaultView.getSelection();
+    if (sel && !sel.isCollapsed) return; /* selection still active — keep it */
+  } catch(e) {}
   _pvLastSpannedIds = {}; /* reset drag-flash tracking on each click */
   var n = e && e.target;
   while (n && fdoc && n !== fdoc.body) {
