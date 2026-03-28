@@ -1173,6 +1173,9 @@ var _syncingFromCode = false; // guard: prevent feedback loop when code drives b
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 var _draggingId = null; // block id being dragged for reorder
 var _treeMode = true; // true = tree view; false = raw HTML textarea
+var _undoStack = [];   /* array of {blocks, sel} snapshots for undo */
+var _redoStack = [];   /* array of {blocks, sel} snapshots for redo */
+var _undoMaxSize = 50; /* maximum undo history depth */
 var _treeExpanded = {}; // bid → bool: whether that block is expanded in tree
 var _syncTreeTimer = null; // debounce timer for tree rebuild
 var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block tree
@@ -1416,6 +1419,7 @@ function _getCaretSplitContent(el) {
 function _splitParagraphAtCursor(b, el) {
   var parts = _getCaretSplitContent(el);
   if (!parts) { document.execCommand('insertLineBreak', false, null); return; }
+  _pushUndo();
 
   /* Update current block with content before cursor */
   b.content = parts.before;
@@ -1609,6 +1613,7 @@ function _handleParagraphBackspace(b, el, e) {
   b.content = curHtml;
   if (!_hasTextContent(curHtml)) {
     _clearPBsPending();
+    _pushUndo();
     var curId = b.id;
     _blocks.splice(idx, 1);
     var curEl = $id(curId); if (curEl) curEl.remove();
@@ -1620,6 +1625,7 @@ function _handleParagraphBackspace(b, el, e) {
 
   if (prev.type === 'p') {
     _clearPBsPending();
+    _pushUndo();
     var prevHtml = prev.content || '';
     var caretOffset = _htmlToPlainText(prevHtml).length;
     var merged = prevHtml + curHtml;
@@ -1721,6 +1727,7 @@ function _handlePBlockPaste(e, d, b) {
     return;
   }
 
+  _pushUndo();
   var firstContent = parts.before + paras[0];
   var lastContent  = paras[paras.length - 1] + parts.after;
   var allContents  = [firstContent].concat(paras.slice(1, -1)).concat([lastContent]);
@@ -1794,9 +1801,53 @@ function makeRichBE(content, placeholder, opts) {
 }
 
 /* =========================================================
+   UNDO / REDO -- snapshot-based block-level history
+   Text edits within contenteditable blocks use native browser
+   undo/redo.  Block structural operations (insert, delete, move,
+   duplicate, split, merge, type-convert, align, find-replace)
+   are tracked here.  Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) trigger
+   this system only when the user is NOT actively editing text.
+   ========================================================= */
+function _snapshot() {
+  return { blocks: JSON.parse(JSON.stringify(_blocks)), sel: _sel };
+}
+
+function _pushUndo() {
+  _undoStack.push(_snapshot());
+  if (_undoStack.length > _undoMaxSize) _undoStack.shift();
+  _redoStack = [];
+}
+
+function _applySnapshot(snap) {
+  _blocks = JSON.parse(JSON.stringify(snap.blocks)); /* deep clone to protect snapshot from mutation */
+  _sel = null;
+  var bl = $id('blist');
+  bl.innerHTML = '';
+  _blocks.forEach(function(b) { _appendBlockEl(b); });
+  _updateCount(); syncCode(); schedPv();
+  if (snap.sel && _blocks.find(function(b){ return b.id === snap.sel; })) {
+    /* setTimeout(0): wait for DOM paint before calling setSelected */
+    setTimeout(function(){ setSelected(snap.sel); }, 0);
+  }
+}
+
+function _undo() {
+  if (_undoStack.length === 0) return;
+  _redoStack.push(_snapshot());
+  _applySnapshot(_undoStack.pop());
+}
+
+function _redo() {
+  if (_redoStack.length === 0) return;
+  _undoStack.push(_snapshot());
+  _applySnapshot(_redoStack.pop());
+}
+
+/* =========================================================
    INSERT BLOCK — ONLY APPENDS, never re-renders
    ========================================================= */
 function insertBlock(type, data) {
+  _pushUndo();
   var b = mkBlock(type, data);
   var selIdx = _sel ? _blocks.findIndex(function(x){ return x.id === _sel; }) : -1;
   if (selIdx >= 0) {
@@ -1991,6 +2042,7 @@ function _buildInner(inner, b) {
         e.stopPropagation();
         _deselectIfOutside(b.id);
         var newAlign = (b.data.align === a.v) ? '' : a.v;
+        _pushUndo();
         /* Batch: apply to all selected text blocks when in multi-select */
         var targetIds = (_multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) ? _multiSel : [b.id];
         _blocks.forEach(function(blk) {
@@ -2032,6 +2084,7 @@ function _buildInner(inner, b) {
 
   function _convertBlockTypeInPlace(b, toType) {
     if (!DEFS[toType] || b.type === toType) return;
+    _pushUndo();
     var fromType = b.type;
     var oldAlign = (b.data && b.data.align) ? b.data.align : '';
     b.type = toType;
@@ -2832,6 +2885,7 @@ function closeFR() {
     var b = _blocks.find(function(x) { return x.id === m.bid; }); if (!b) return;
     var pat = _frBuildPat($id('fr-find').value, $id('fr-regex').checked, $id('fr-case').checked);
     if (!pat) return;
+    _pushUndo();
     _frClearHighlights();  /* remove marks before rebuilding block DOM */
     _frReplaceNth(b, pat, $id('fr-replace').value, m.nth);
     _frRebuildBlock(b);
@@ -2850,6 +2904,7 @@ function closeFR() {
     if (!pat || _frMatches.length === 0) return;
     var repl = $id('fr-replace').value;
     var totalReplaced = _frMatches.length;
+    _pushUndo();
     _frClearHighlights();  /* remove marks before rebuilding block DOMs */
     var seen = {};
     _frMatches.forEach(function(m) {
@@ -2871,6 +2926,7 @@ function closeFR() {
    MOVE / DELETE / DUPLICATE
    ========================================================= */
 function moveBlock(id, dir) {
+  _pushUndo();
   _deselectIfOutside(id);
   var i = _blocks.findIndex(function(b){ return b.id===id; });
   if (i<0) return;
@@ -2886,6 +2942,7 @@ function moveBlock(id, dir) {
 }
 
 function reorderBlock(fromId, toId, after) {
+  _pushUndo();
   _deselectIfOutside(fromId);
   var fi = _blocks.findIndex(function(b){ return b.id===fromId; });
   if (fi<0) return;
@@ -2902,14 +2959,20 @@ function reorderBlock(fromId, toId, after) {
   syncCode(); schedPv();
 }
 
-function deleteBlock(id) {
+function _deleteBlockCore(id) {
   var el=$id(id); if(el) el.remove();
   _blocks = _blocks.filter(function(b){ return b.id!==id; });
   if (_sel===id) _sel=null;
+}
+
+function deleteBlock(id) {
+  _pushUndo();
+  _deleteBlockCore(id);
   _updateCount(); syncCode(); schedPv();
 }
 
 function duplicateBlock(id) {
+  _pushUndo();
   var src=_blocks.find(function(b){ return b.id===id; }); if(!src) return;
   var copy = JSON.parse(JSON.stringify(src)); copy.id=uid();
   var i=_blocks.findIndex(function(b){ return b.id===id; });
@@ -5057,6 +5120,19 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
+  // Ctrl/Meta+Z: undo (block-level); Ctrl/Meta+Y or Ctrl/Meta+Shift+Z: redo
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    var k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) {
+      if (!_isEditingText() && !_isModalOpen()) { e.preventDefault(); _undo(); }
+      return;
+    }
+    if (k === 'y' || (k === 'z' && e.shiftKey)) {
+      if (!_isEditingText() && !_isModalOpen()) { e.preventDefault(); _redo(); }
+      return;
+    }
+  }
+
   // Ctrl/Meta+F or Ctrl/Meta+H: find & replace
   if ((e.ctrlKey || e.metaKey) && !e.altKey &&
       (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')) {
@@ -5088,7 +5164,9 @@ document.addEventListener('keydown', function(e) {
       if (_multiSel.length > 0) {
         e.preventDefault();
         var ids = _multiSel.slice(); clearMultiSel();
-        ids.forEach(function(id) { deleteBlock(id); });
+        _pushUndo();
+        ids.forEach(function(id) { _deleteBlockCore(id); });
+        _updateCount(); syncCode(); schedPv();
         return;
       }
       if (_sel) { e.preventDefault(); deleteBlock(_sel); }
