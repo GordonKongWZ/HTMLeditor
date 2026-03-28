@@ -482,6 +482,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   position:relative;height:110px;background:var(--bg0);overflow:hidden;flex-shrink:0
 }
 .cl-card-iframe{
+  position:absolute;left:0;top:0;
   width:600px;height:400px;border:none;display:block;
   transform-origin:top left;pointer-events:none
 }
@@ -4698,8 +4699,6 @@ function renderClLib() {
     iframe.className = 'cl-card-iframe';
     iframe.setAttribute('sandbox', 'allow-same-origin');
     iframe.setAttribute('scrolling', 'no');
-    /* scale iframe to fit 150px-wide card preview area */
-    iframe.style.cssText = 'width:600px;height:400px;border:none;display:block;transform-origin:top left;pointer-events:none';
     prev.appendChild(iframe);
     card.appendChild(prev);
 
@@ -4721,12 +4720,15 @@ function renderClLib() {
     card.appendChild(foot);
     body.appendChild(card);
 
-    /* scale iframe to fill preview box once layout is known */
+    /* scale iframe: fit to card width, center vertically */
     (function(fr, pv) {
       requestAnimationFrame(function() {
         var w = pv.offsetWidth || 150;
-        var h = pv.offsetHeight || 110;
-        var scale = Math.min(w / 600, h / 400);
+        var pvH = pv.offsetHeight || 110;
+        var scale = w / 600;
+        var scaledH = 400 * scale;
+        var topOffset = scaledH < pvH ? Math.round((pvH - scaledH) / 2) : 0;
+        fr.style.top = topOffset + 'px';
         fr.style.transform = 'scale(' + scale + ')';
       });
     })(iframe, prev);
