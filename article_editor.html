@@ -593,6 +593,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .tn-hdr:hover{background:var(--bg1)}
 .tn-hdr.tn-sel{background:var(--acl)!important}
 .tn-hdr.tn-sel:hover{background:var(--acb)!important}
+.tn-hdr.tn-msel{background:rgba(38,68,186,.15)!important}
+.tn-hdr.tn-msel:hover{background:rgba(38,68,186,.22)!important}
 
 /* Toggle arrow */
 .tn-tog{width:14px;height:14px;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:9px;flex-shrink:0;border-radius:2px;transition:color .1s}
@@ -2321,10 +2323,20 @@ function setSelected(id) {
   if (id) { _pendingScrollBid = id; scrollPreviewToBlock(id); scrollEditorToBlock(id); _scrollCodeToBlock(id); }
   /* Clear any preview text-selection highlights whenever the editor selection changes */
   clearPvHighlights();
-  // Sync tree selection highlight
+  _syncTreeSel();
+}
+
+/* Sync tree node highlight classes to match current _sel / _multiSel state */
+function _syncTreeSel() {
   document.querySelectorAll('#ce-tree-pane .tn-hdr.tn-sel').forEach(function(h){ h.classList.remove('tn-sel'); });
-  if (id) {
-    var tnEl = $id('tn-' + id);
+  document.querySelectorAll('#ce-tree-pane .tn-hdr.tn-msel').forEach(function(h){ h.classList.remove('tn-msel'); });
+  if (_multiSel.length > 0) {
+    _multiSel.forEach(function(id) {
+      var tnEl = $id('tn-' + id);
+      if (tnEl) { var tnHdr = tnEl.querySelector('.tn-hdr'); if (tnHdr) tnHdr.classList.add('tn-msel'); }
+    });
+  } else if (_sel) {
+    var tnEl = $id('tn-' + _sel);
     if (tnEl) { var tnHdr = tnEl.querySelector('.tn-hdr'); if (tnHdr) tnHdr.classList.add('tn-sel'); }
   }
 }
@@ -2336,6 +2348,7 @@ function clearMultiSel() {
   _multiSelAnchor = null;
   /* Clear any preview text-selection highlights when multi-select is cleared */
   clearPvHighlights();
+  _syncTreeSel();
 }
 
 /* Set multi-select (or single-select) from an ordered list of block IDs.
@@ -2361,6 +2374,7 @@ function setMultiSelFromIds(ids) {
   /* Scroll editor to the first block in the selection */
   var firstEl = $id(ordered[0]);
   if (firstEl) firstEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  _syncTreeSel();
 }
 
 function toggleMultiSel(id) {
@@ -2387,6 +2401,7 @@ function toggleMultiSel(id) {
     _multiSel.push(id);
     var el = $id(id); if (el) el.classList.add('msel');
   }
+  _syncTreeSel();
 }
 
 function rangeMultiSel(id) {
@@ -2402,6 +2417,7 @@ function rangeMultiSel(id) {
     _multiSelAnchor = id;
     _multiSel.push(id);
     var el = $id(id); if (el) el.classList.add('msel');
+    _syncTreeSel();
     return;
   }
   var ai = _blocks.findIndex(function(b) { return b.id === anchor; });
@@ -2417,6 +2433,7 @@ function rangeMultiSel(id) {
   }
   /* Keep anchor fixed for subsequent shift-clicks */
   _multiSelAnchor = anchor;
+  _syncTreeSel();
 }
 
 /* =========================================================
@@ -4071,7 +4088,7 @@ function _buildTreeNode(b) {
 
   /* — Header row — */
   var hdr = document.createElement('div');
-  hdr.className = 'tn-hdr' + (_sel === b.id ? ' tn-sel' : '');
+  hdr.className = 'tn-hdr' + (_sel === b.id ? ' tn-sel' : (_multiSel.indexOf(b.id) >= 0 ? ' tn-msel' : ''));
 
   /* Toggle arrow */
   var tog = document.createElement('span');
@@ -4151,9 +4168,14 @@ function _buildTreeNode(b) {
 
   hdr.appendChild(acts);
 
-  /* Click header → select block */
+  /* Click header → select block (ctrl/meta = toggle multi-select, shift = range multi-select) */
   (function(bid, h, nodeWrap) {
-    h.addEventListener('click', function() { setSelected(bid); });
+    h.addEventListener('click', function(e) {
+      if (e.ctrlKey || e.metaKey) { toggleMultiSel(bid); return; }
+      if (e.shiftKey)              { rangeMultiSel(bid);  return; }
+      if (_multiSel.length > 0)    { clearMultiSel(); }
+      setSelected(bid);
+    });
     h.addEventListener('dblclick', function(e) { e.stopPropagation(); _toggleTreeEdit(bid, nodeWrap); });
     h.addEventListener('contextmenu', function(e) { e.preventDefault(); _openTreeCtx(e, bid, nodeWrap); });
   })(b.id, hdr, wrap);
