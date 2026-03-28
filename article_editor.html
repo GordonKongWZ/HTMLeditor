@@ -4680,10 +4680,12 @@ $id('cxpv-del').addEventListener('click', function(){ if (_pvCtxId) deleteBlock(
    selections, including any lingering native text selection in the preview. */
 $id('blist').addEventListener('click', function(e) {
   /* Only act when the click target is blist itself or a direct non-block child
-     (i.e., the click did not land on a real block element). */
+     (i.e., the click did not land on a real block element). Editor-side block
+     elements carry the class 'bi'; walk up from the click target and stop if
+     we find one. */
   var n = e.target;
   while (n && n !== this) {
-    if (n.getAttribute && n.getAttribute('data-bid')) return; /* hit a block */
+    if (n.classList && n.classList.contains('bi')) return; /* hit a block */
     n = n.parentElement;
   }
   if (_multiSel.length > 0) { clearMultiSel(); } else if (_sel) { setSelected(null); }
