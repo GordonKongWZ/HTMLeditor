@@ -306,6 +306,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .copy-opt-text{flex:1}
 .copy-opt-label{font-size:12px;color:var(--t0);font-weight:500}
 .copy-opt-desc{font-size:11px;color:var(--t2);margin-top:1px}
+.dlg-plain-opt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);cursor:pointer;flex-shrink:0;padding:2px 0}
+.dlg-plain-opt input[type=checkbox]{accent-color:var(--ac);cursor:pointer;margin:0}
 
 /* Table builder */
 .tbed{overflow-x:auto;max-height:200px;overflow-y:auto}
@@ -956,6 +958,7 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <textarea id="paste-code" readonly spellcheck="false"></textarea>
     </div>
     <div class="dbtns">
+      <label class="dlg-plain-opt"><input type="checkbox" id="paste-plain-chk"> 仅保留文字</label>
       <button class="dcancel" id="paste-cancel">取消</button>
       <button class="dconfirm" id="paste-insert">插入</button>
     </div>
@@ -1026,6 +1029,7 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <input id="cl-import-name" type="text" placeholder="自定义组件名称">
     </div>
     <div class="dbtns">
+      <label class="dlg-plain-opt"><input type="checkbox" id="cl-import-plain-chk"> 仅保留文字</label>
       <button class="dcancel" id="cl-import-cancel">取消</button>
       <button class="dconfirm" id="cl-import-confirm">保存到组件库</button>
     </div>
@@ -3353,6 +3357,8 @@ function confirmInfobox(){
    PASTE DIALOG
    ========================================================= */
 var _pasteBlocks = [];
+var _pasteRawHtml = '';
+var _pasteRawText = '';
 
 /* Strip script tags and event-handler attributes from an HTML string */
 function _sanitizeHtml(html) {
@@ -3454,26 +3460,54 @@ function _parsePasteContent(html, text) {
     .map(function(line){ return mkBlock('p', { content: line }); });
 }
 
-function openPasteDlg(html, text) {
-  _pasteBlocks = _parsePasteContent(html || '', text || '');
-  if (!_pasteBlocks.length) return;
-  /* Build preview HTML and strip <script> tags via DOMParser for the sandboxed iframe */
+/* Extract plain-text blocks from raw paste data */
+function _pasteAsPlainBlocks() {
+  var txt = '';
+  if (_pasteRawHtml) {
+    try {
+      var doc = new DOMParser().parseFromString(_pasteRawHtml, 'text/html');
+      txt = doc.body ? (doc.body.textContent || '') : '';
+    } catch(e) {}
+  }
+  if (!txt.trim()) txt = _pasteRawText;
+  var src = txt.trim();
+  if (!src) return [];
+  return src.split('\n')
+    .map(function(l){ return l.trim(); })
+    .filter(Boolean)
+    .map(function(l){ return mkBlock('p', { content: l }); });
+}
+
+/* Re-render paste dialog preview/code from current _pasteBlocks */
+function _refreshPasteDlg() {
+  var isPlain = $id('paste-plain-chk').checked;
+  _pasteBlocks = isPlain
+    ? _pasteAsPlainBlocks()
+    : _parsePasteContent(_pasteRawHtml, _pasteRawText);
   var previewBody = _pasteBlocks.map(b2html).join('\n\n');
   var rawHtml = wrapHTML(previewBody);
   var previewDoc = new DOMParser().parseFromString(rawHtml, 'text/html');
   previewDoc.querySelectorAll('script').forEach(function(s){ s.remove(); });
-  var previewHtml = '<!DOCTYPE html>\n' + previewDoc.documentElement.outerHTML;
-  /* Populate iframe via srcdoc */
-  $id('paste-iframe').srcdoc = previewHtml;
-  /* Populate code area */
+  $id('paste-iframe').srcdoc = '<!DOCTYPE html>\n' + previewDoc.documentElement.outerHTML;
   $id('paste-code').value = _pasteBlocks.map(b2html).join('\n\n');
   $id('paste-block-count').textContent = _pasteBlocks.length;
+}
+
+function openPasteDlg(html, text) {
+  _pasteRawHtml = html || '';
+  _pasteRawText = text || '';
+  $id('paste-plain-chk').checked = false;
+  _pasteBlocks = _parsePasteContent(_pasteRawHtml, _pasteRawText);
+  if (!_pasteBlocks.length) return;
+  _refreshPasteDlg();
   $id('paste-overlay').classList.add('open');
 }
 
 function closePasteDlg() {
   $id('paste-overlay').classList.remove('open');
   _pasteBlocks = [];
+  _pasteRawHtml = '';
+  _pasteRawText = '';
 }
 
 function confirmPaste() {
@@ -3505,6 +3539,7 @@ function confirmPaste() {
 $id('paste-cancel').addEventListener('click', closePasteDlg);
 $id('paste-close').addEventListener('click', closePasteDlg);
 $id('paste-insert').addEventListener('click', confirmPaste);
+$id('paste-plain-chk').addEventListener('change', _refreshPasteDlg);
 $id('paste-overlay').addEventListener('click', function(e){ if (e.target === this) closePasteDlg(); });
 
 /* =========================================================
@@ -4846,6 +4881,7 @@ var _clImportPreviewTimer = null;
                if null/undefined, open blank (new import mode). */
 function openClImportDlg(editItemId) {
   _clEditingItemId = editItemId || null;
+  $id('cl-import-plain-chk').checked = false;
   var dlgTitle = $id('cl-import-head').querySelector('span');
   var confirmBtn = $id('cl-import-confirm');
 
@@ -4879,13 +4915,23 @@ function editClItem(itemId) {
   openClImportDlg(itemId);
 }
 
+/* Convert HTML string to plain-text paragraphs HTML */
+function _clImportPlainHtml(html) {
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var txt = doc.body ? (doc.body.textContent || '') : html;
+  var lines = txt.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  return lines.length ? lines.map(function(l){ return '<p>' + esc(l) + '</p>'; }).join('\n') : '<p>' + esc(txt.trim()) + '</p>';
+}
+
 function _updateClImportPreview() {
   clearTimeout(_clImportPreviewTimer);
   _clImportPreviewTimer = setTimeout(function() {
     var html = $id('cl-import-code').value.trim();
     if (!html) { $id('cl-import-iframe').srcdoc = ''; return; }
+    var isPlain = $id('cl-import-plain-chk').checked;
+    var renderHtml = isPlain ? _clImportPlainHtml(html) : html;
     /* Wrap in a minimal page for preview */
-    var previewHtml = wrapHTML('  ' + html);
+    var previewHtml = wrapHTML('  ' + renderHtml);
     /* Strip scripts for sandbox safety */
     var doc = new DOMParser().parseFromString(previewHtml, 'text/html');
     doc.querySelectorAll('script').forEach(function(s){ s.remove(); });
@@ -4911,6 +4957,11 @@ function confirmClImport() {
   }
   var name = $id('cl-import-name').value.trim();
   if (!name) name = '自定义组件';
+
+  /* Apply plain-text stripping if checkbox is checked */
+  if ($id('cl-import-plain-chk').checked) {
+    html = _clImportPlainHtml(html);
+  }
 
   if (_clEditingItemId) {
     /* Edit mode: update the existing item in-place */
@@ -4943,6 +4994,7 @@ $id('cl-import-cancel').addEventListener('click',  closeClImportDlg);
 $id('cl-import-confirm').addEventListener('click', confirmClImport);
 $id('cl-import-overlay').addEventListener('click', function(e){ if (e.target === this) closeClImportDlg(); });
 $id('cl-import-code').addEventListener('input', _updateClImportPreview);
+$id('cl-import-plain-chk').addEventListener('change', _updateClImportPreview);
 $id('cl-import-code').addEventListener('paste', function(e) {
   var html = e.clipboardData && e.clipboardData.getData('text/html');
   if (!html) return; // 没有 HTML 风格，退回浏览器默认纯文本粘贴
