@@ -104,10 +104,19 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* Block type badge */
 .btbadge{
-  position:absolute;right:5px;top:3px;font-size:9px;font-weight:600;color:var(--acm);
-  opacity:0;pointer-events:none;text-transform:uppercase;letter-spacing:.05em;transition:opacity .1s
+  position:absolute;right:5px;top:3px;
+  display:flex;align-items:center;gap:3px;
+  opacity:0;pointer-events:none;transition:opacity .1s
 }
 .bi:hover .btbadge{opacity:1}
+.btbadge-lbl{font-size:9px;font-weight:600;color:var(--acm);text-transform:uppercase;letter-spacing:.05em}
+.bt-save-btn{
+  pointer-events:auto;font-size:11px;line-height:1;
+  width:14px;height:14px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--acb);border-radius:2px;
+  background:transparent;color:var(--acm);cursor:pointer;padding:0;transition:all .1s
+}
+.bt-save-btn:hover{background:var(--ac);border-color:var(--acd);color:#fff}
 
 /* Block inner */
 .binn{padding:6px 8px}
@@ -297,6 +306,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .copy-opt-text{flex:1}
 .copy-opt-label{font-size:12px;color:var(--t0);font-weight:500}
 .copy-opt-desc{font-size:11px;color:var(--t2);margin-top:1px}
+.dlg-plain-opt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);cursor:pointer;flex-shrink:0;padding:2px 0}
+.dlg-plain-opt input[type=checkbox]{accent-color:var(--ac);cursor:pointer;margin:0}
 
 /* Table builder */
 .tbed{overflow-x:auto;max-height:200px;overflow-y:auto}
@@ -349,7 +360,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 #paste-overlay.open{display:flex}
 #paste-box{
   background:#fff;border-radius:var(--r12);padding:18px 22px 16px;
-  width:92vw;max-width:700px;max-height:90vh;
+  width:92vw;max-width:700px;height:88vh;max-height:88vh;
   display:flex;flex-direction:column;gap:10px;
   box-shadow:0 20px 60px rgba(0,0,0,.2)
 }
@@ -453,6 +464,81 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .ce-tab{padding:2px 8px;border:none;background:transparent;color:var(--t2);font-size:10px;font-family:var(--fm);cursor:pointer;border-radius:var(--r4);transition:all .1s;white-space:nowrap;line-height:1}
 .ce-tab:hover{background:var(--bg2);color:var(--t0)}
 .ce-tab.act{background:var(--bg2);color:var(--t0);font-weight:600}
+
+/* ── Custom Component Library pane ── */
+#cl-pane{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+#cl-pane-bar{
+  display:flex;align-items:center;gap:5px;padding:3px 8px;
+  background:var(--bg1);border-bottom:1px solid var(--bl);flex-shrink:0
+}
+#cl-pane-bar span{font-size:10px;color:var(--t2)}
+#cl-body{flex:1;overflow-y:auto;padding:8px;background:#fff;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-content:start}
+.cl-card{
+  position:relative;border-radius:var(--r8);border:1px solid var(--bl);
+  background:#fff;cursor:pointer;overflow:hidden;
+  transition:box-shadow .15s,border-color .15s;user-select:none;
+  display:flex;flex-direction:column
+}
+.cl-card:hover{border-color:var(--acb);box-shadow:0 2px 10px rgba(38,68,186,.12)}
+.cl-card-preview{
+  position:relative;height:110px;background:var(--bg0);overflow:hidden;flex-shrink:0
+}
+.cl-card-iframe{
+  position:absolute;left:0;top:0;
+  width:600px;height:400px;border:none;display:block;
+  transform-origin:top left;pointer-events:none
+}
+.cl-type-badge{
+  position:absolute;top:5px;right:5px;z-index:1;
+  font-size:9px;font-family:var(--fm);padding:1px 5px;border-radius:3px;
+  background:rgba(255,255,255,.9);color:var(--t1);
+  text-transform:uppercase;letter-spacing:.04em;line-height:1.5;
+  border:1px solid var(--bl);white-space:nowrap
+}
+.cl-card-foot{
+  display:flex;align-items:center;gap:4px;padding:5px 7px;
+  border-top:1px solid var(--bl);flex-shrink:0;background:#fff
+}
+.cl-item-label{font-size:11px;color:var(--t0);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cl-del-btn{
+  flex-shrink:0;background:none;border:none;cursor:pointer;
+  font-size:11px;color:var(--t2);padding:1px 3px;border-radius:3px;line-height:1;transition:all .1s
+}
+.cl-del-btn:hover{background:#fee2e2;color:#dc2626}
+
+/* ── Custom Library Context Menu ── */
+#ctxm-cl{
+  display:none;position:fixed;z-index:2000;background:#fff;border:1px solid var(--bm);
+  border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:140px
+}
+#ctxm-cl.open{display:block}
+
+/* ── Custom Library Import Dialog ── */
+#cl-import-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center
+}
+#cl-import-overlay.open{display:flex}
+#cl-import-box{
+  background:#fff;border-radius:var(--r12);padding:18px 22px 16px;
+  width:92vw;max-width:700px;height:88vh;max-height:88vh;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+#cl-import-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#cl-import-head span{font-size:14px;font-weight:700;color:var(--t0)}
+#cl-import-close{background:none;border:none;cursor:pointer;font-size:14px;color:var(--t2);padding:2px 6px;border-radius:var(--r4);line-height:1}
+#cl-import-close:hover{background:var(--bg1);color:var(--t0)}
+#cl-import-preview-wrap{flex:1;min-height:180px;border:1px solid var(--bm);border-radius:var(--r8);overflow:hidden;background:var(--bg0)}
+#cl-import-iframe{width:100%;height:100%;border:none;display:block}
+#cl-import-code-wrap{flex-shrink:0;height:120px;display:flex;flex-direction:column;gap:4px}
+#cl-import-code-label{font-size:11px;color:var(--t2)}
+#cl-import-code{flex:1;resize:none;border:1px solid var(--bm);border-radius:var(--r8);padding:7px 10px;font-family:var(--fm);font-size:11px;color:var(--t1);background:var(--bg1);outline:none;overflow:auto}
+#cl-import-code:focus{border-color:var(--acm)}
+#cl-import-name-wrap{flex-shrink:0;display:flex;align-items:center;gap:8px}
+#cl-import-name-lbl{font-size:11px;color:var(--t1);white-space:nowrap;flex-shrink:0}
+#cl-import-name{flex:1;padding:5px 9px;border:1px solid var(--bm);border-radius:var(--r4);font-size:12px;font-family:var(--fs);color:var(--t0);outline:none;background:#fff}
+#cl-import-name:focus{border-color:var(--acm);box-shadow:0 0 0 3px rgba(38,68,186,.1)}
 
 /* ── Tree view pane ── */
 #ce-tree-pane{flex:1;overflow-y:auto;background:#fff;padding:4px 3px;min-height:0}
@@ -728,10 +814,20 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <div style="flex:1"></div>
       <button class="ce-tab act" id="ce-tab-tree" aria-label="树形视图">🌲 树形</button>
       <button class="ce-tab" id="ce-tab-html" aria-label="HTML 视图">◁▷ HTML</button>
+      <button class="ce-tab" id="ce-tab-cl" aria-label="自定义组件库">☆ 组件库</button>
       <span id="cchars" style="font-size:10px;color:var(--t2);margin-left:6px">0 chars</span>
     </div>
     <div id="ce-tree-pane"><div class="tv-empty">暂无内容</div></div>
     <textarea id="ctarea" spellcheck="false" style="display:none" placeholder="<!-- 插入组件后代码将在此显示，可直接编辑 -->"></textarea>
+    <!-- Custom Component Library pane -->
+    <div id="cl-pane">
+      <div id="cl-pane-bar">
+        <button class="ce-tab" id="cl-import-btn">＋ 导入 HTML</button>
+        <div style="flex:1"></div>
+        <span id="cl-count">0 个组件</span>
+      </div>
+      <div id="cl-body"></div>
+    </div>
   </div>
 </div>
 
@@ -806,6 +902,16 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <div class="cxi danger" id="cxpv-del">✕ 删除</div>
 </div>
 
+<!-- Context Menu (custom library) -->
+<div id="ctxm-cl">
+  <div class="cxi" id="cxcl-insert">⊕ 插入到当前位置</div>
+  <div class="cxs"></div>
+  <div class="cxi" id="cxcl-edit">✎ 编辑内容</div>
+  <div class="cxi" id="cxcl-rename">✏ 重命名</div>
+  <div class="cxs"></div>
+  <div class="cxi danger" id="cxcl-del">✕ 从库中删除</div>
+</div>
+
 <!-- Floating Format Bar (rich-text blocks) -->
 <div id="fmt-bar">
   <button class="fmtb" id="fmt-b"  title="粗体 (Ctrl+B)"><b>B</b></button>
@@ -852,6 +958,7 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
       <textarea id="paste-code" readonly spellcheck="false"></textarea>
     </div>
     <div class="dbtns">
+      <label class="dlg-plain-opt"><input type="checkbox" id="paste-plain-chk"> 仅保留文字</label>
       <button class="dcancel" id="paste-cancel">取消</button>
       <button class="dconfirm" id="paste-insert">插入</button>
     </div>
@@ -899,6 +1006,32 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
     <div class="dbtns">
       <button class="dcancel" id="export-next-cancel">稍后</button>
       <button class="dconfirm" id="export-next-confirm">📝 新建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Library Import Dialog -->
+<div id="cl-import-overlay">
+  <div id="cl-import-box">
+    <div id="cl-import-head">
+      <span>📥 导入到组件库</span>
+      <button id="cl-import-close">✕</button>
+    </div>
+    <div id="cl-import-preview-wrap">
+      <iframe id="cl-import-iframe" sandbox="allow-same-origin"></iframe>
+    </div>
+    <div id="cl-import-code-wrap">
+      <div id="cl-import-code-label">粘贴 HTML 代码（将保存为自定义组件）</div>
+      <textarea id="cl-import-code" spellcheck="false" placeholder="<!-- 在此粘贴 HTML 代码 -->"></textarea>
+    </div>
+    <div id="cl-import-name-wrap">
+      <span id="cl-import-name-lbl">组件名称：</span>
+      <input id="cl-import-name" type="text" placeholder="自定义组件名称">
+    </div>
+    <div class="dbtns">
+      <label class="dlg-plain-opt"><input type="checkbox" id="cl-import-plain-chk"> 仅保留文字</label>
+      <button class="dcancel" id="cl-import-cancel">取消</button>
+      <button class="dconfirm" id="cl-import-confirm">保存到组件库</button>
     </div>
   </div>
 </div>
@@ -983,6 +1116,13 @@ var _lastUsedTextColor = '';
 var _pCtrlBPending = { bid:null, ts:0 };
 var P_CTRL_B_DBL_MS = 500;
 var P_CTRL_B_NO_COLOR_TIP_MSG = '暂无最近颜色，请先在格式栏选择颜色';
+
+/* ── Custom Component Library ── */
+var _clItems = [];       /* array of { id, label, type, block } */
+var _CL_KEY  = 'htmleditor_cl_v1';
+var _clCtxItemId = null; /* item id being right-clicked */
+var _clEditingItemId = null; /* item id currently being edited in the import dialog (null = new import) */
+var _ceMode  = 'tree';   /* current code-pane mode: 'tree' | 'html' | 'cl' */
 
 function uid() { return 'b' + (++_idSeq); }
 
@@ -1670,7 +1810,19 @@ function _buildBlockEl(b) {
 
   // ── Badge ──
   var badge = document.createElement('span');
-  badge.className = 'btbadge'; badge.textContent = b.label;
+  badge.className = 'btbadge';
+  var badgeLbl = document.createElement('span');
+  badgeLbl.className = 'btbadge-lbl';
+  badgeLbl.textContent = b.label;
+  badge.appendChild(badgeLbl);
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'bt-save-btn';
+  saveBtn.title = '存入组件库';
+  saveBtn.textContent = '+';
+  (function(blk) {
+    saveBtn.addEventListener('click', function(e) { e.stopPropagation(); addToLibrary(blk); });
+  })(b);
+  badge.appendChild(saveBtn);
   el.appendChild(badge);
 
   // ── Inner content ──
@@ -3205,6 +3357,8 @@ function confirmInfobox(){
    PASTE DIALOG
    ========================================================= */
 var _pasteBlocks = [];
+var _pasteRawHtml = '';
+var _pasteRawText = '';
 
 /* Strip script tags and event-handler attributes from an HTML string */
 function _sanitizeHtml(html) {
@@ -3306,26 +3460,53 @@ function _parsePasteContent(html, text) {
     .map(function(line){ return mkBlock('p', { content: line }); });
 }
 
-function openPasteDlg(html, text) {
-  _pasteBlocks = _parsePasteContent(html || '', text || '');
-  if (!_pasteBlocks.length) return;
-  /* Build preview HTML and strip <script> tags via DOMParser for the sandboxed iframe */
+/* Extract plain-text blocks from raw paste data */
+function _pasteAsPlainBlocks() {
+  var txt = _pasteRawText || '';
+  if (!txt.trim() && _pasteRawHtml) {
+    try {
+      var doc = new DOMParser().parseFromString(_pasteRawHtml, 'text/html');
+      txt = doc.body ? _domToText(doc.body) : '';
+    } catch(e) {}
+  }
+  var src = txt.trim();
+  if (!src) return [];
+  return src.split('\n')
+    .map(function(l){ return l.trim(); })
+    .filter(Boolean)
+    .map(function(l){ return mkBlock('p', { content: l }); });
+}
+
+/* Re-render paste dialog preview/code from current _pasteBlocks */
+function _refreshPasteDlg() {
+  var isPlain = $id('paste-plain-chk').checked;
+  _pasteBlocks = isPlain
+    ? _pasteAsPlainBlocks()
+    : _parsePasteContent(_pasteRawHtml, _pasteRawText);
   var previewBody = _pasteBlocks.map(b2html).join('\n\n');
   var rawHtml = wrapHTML(previewBody);
   var previewDoc = new DOMParser().parseFromString(rawHtml, 'text/html');
   previewDoc.querySelectorAll('script').forEach(function(s){ s.remove(); });
-  var previewHtml = '<!DOCTYPE html>\n' + previewDoc.documentElement.outerHTML;
-  /* Populate iframe via srcdoc */
-  $id('paste-iframe').srcdoc = previewHtml;
-  /* Populate code area */
+  $id('paste-iframe').srcdoc = '<!DOCTYPE html>\n' + previewDoc.documentElement.outerHTML;
   $id('paste-code').value = _pasteBlocks.map(b2html).join('\n\n');
   $id('paste-block-count').textContent = _pasteBlocks.length;
+}
+
+function openPasteDlg(html, text) {
+  _pasteRawHtml = html || '';
+  _pasteRawText = text || '';
+  $id('paste-plain-chk').checked = false;
+  _pasteBlocks = _parsePasteContent(_pasteRawHtml, _pasteRawText);
+  if (!_pasteBlocks.length) return;
+  _refreshPasteDlg();
   $id('paste-overlay').classList.add('open');
 }
 
 function closePasteDlg() {
   $id('paste-overlay').classList.remove('open');
   _pasteBlocks = [];
+  _pasteRawHtml = '';
+  _pasteRawText = '';
 }
 
 function confirmPaste() {
@@ -3357,6 +3538,7 @@ function confirmPaste() {
 $id('paste-cancel').addEventListener('click', closePasteDlg);
 $id('paste-close').addEventListener('click', closePasteDlg);
 $id('paste-insert').addEventListener('click', confirmPaste);
+$id('paste-plain-chk').addEventListener('change', _refreshPasteDlg);
 $id('paste-overlay').addEventListener('click', function(e){ if (e.target === this) closePasteDlg(); });
 
 /* =========================================================
@@ -3464,14 +3646,18 @@ $id('btn-clear').addEventListener('click',function(){
    TREE VIEW
    ========================================================= */
 
-/* Switch between tree view and raw HTML textarea */
+/* Switch between tree view, raw HTML textarea, and custom library */
 function switchCeTab(mode) {
+  _ceMode = mode;
   _treeMode = (mode === 'tree');
-  $id('ce-tree-pane').style.display = _treeMode ? '' : 'none';
-  $id('ctarea').style.display = _treeMode ? 'none' : '';
-  $id('ce-tab-tree').classList.toggle('act', _treeMode);
-  $id('ce-tab-html').classList.toggle('act', !_treeMode);
-  if (_treeMode) _doSyncTree();
+  $id('ce-tree-pane').style.display = (mode === 'tree') ? '' : 'none';
+  $id('ctarea').style.display       = (mode === 'html') ? '' : 'none';
+  $id('cl-pane').style.display      = (mode === 'cl')   ? 'flex' : 'none';
+  $id('ce-tab-tree').classList.toggle('act', mode === 'tree');
+  $id('ce-tab-html').classList.toggle('act', mode === 'html');
+  $id('ce-tab-cl').classList.toggle('act',   mode === 'cl');
+  if (mode === 'tree') _doSyncTree();
+  if (mode === 'cl')   renderClLib();
 }
 
 /* Debounced tree rebuild — called from syncCode() */
@@ -3886,6 +4072,7 @@ function _insertRawBlockAfter(afterBid) {
 /* Tab button wiring */
 $id('ce-tab-tree').addEventListener('click', function(){ switchCeTab('tree'); });
 $id('ce-tab-html').addEventListener('click', function(){ switchCeTab('html'); });
+$id('ce-tab-cl').addEventListener('click',   function(){ switchCeTab('cl'); });
 
 /* =========================================================
    RESIZE HANDLE
@@ -4045,7 +4232,7 @@ function _openPvCtxMenu(bid, x, y) {
 }
 
 function _closeAllCtxMenus() {
-  ['ctxm','ctxm-tree','ctxm-pv'].forEach(function(id){ $id(id).classList.remove('open'); });
+  ['ctxm','ctxm-tree','ctxm-pv','ctxm-cl'].forEach(function(id){ $id(id).classList.remove('open'); });
   _pvClearCtxHighlight();
 }
 
@@ -4352,7 +4539,8 @@ function _isModalOpen() {
   return $id('doverlay').classList.contains('open') ||
          $id('sc-overlay').classList.contains('open') ||
          $id('paste-overlay').classList.contains('open') ||
-         $id('export-next-overlay').classList.contains('open');
+         $id('export-next-overlay').classList.contains('open') ||
+         $id('cl-import-overlay').classList.contains('open');
 }
 
 /* Intercept paste (Ctrl+V) when not editing text */
@@ -4471,8 +4659,377 @@ $id('sc-overlay').addEventListener('click', function(e) {
 $id('btn-shortcuts').addEventListener('click', openShortcutHelp);
 
 
+/* =========================================================
+   CUSTOM COMPONENT LIBRARY
+   ========================================================= */
+
+/* ── Persistence ── */
+function _clLoad() {
+  try {
+    var s = localStorage.getItem(_CL_KEY);
+    if (s) _clItems = JSON.parse(s);
+  } catch(e) { console.error('Custom library load failed:', e); _clItems = []; }
+}
+
+function _clSave() {
+  try { localStorage.setItem(_CL_KEY, JSON.stringify(_clItems)); } catch(e) { console.error('Custom library save failed:', e); }
+}
+
+function _clUid() {
+  return 'cl' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+/* ── Add block to library ── */
+function addToLibrary(b) {
+  var defLabel = b.label;
+  var txt = (b.content || '').replace(/<[^>]+>/g, '').trim();
+  if (txt) defLabel += ' · ' + txt.substring(0, 16);
+  var name = prompt('请输入组件名称：', defLabel);
+  if (name === null) return; // cancelled
+  if (!name.trim()) name = b.label;
+  var item = {
+    id:    _clUid(),
+    label: name.trim(),
+    type:  b.type,
+    block: JSON.parse(JSON.stringify(b))
+  };
+  _clItems.push(item);
+  _clSave();
+  /* Open the library pane so user sees the new item */
+  if (_ceMode !== 'cl') switchCeTab('cl');
+  else renderClLib();
+}
+
+/* ── Render library pane ── */
+function renderClLib() {
+  var body = $id('cl-body');
+  if (!body) return;
+  body.innerHTML = '';
+  $id('cl-count').textContent = _clItems.length + ' 个组件';
+  if (!_clItems.length) {
+    var emp = document.createElement('div');
+    emp.className = 'tv-empty';
+    emp.style.cssText = 'grid-column:1/-1';
+    emp.textContent = '组件库为空 · 点击块右上角 + 按钮保存组件';
+    body.appendChild(emp);
+    return;
+  }
+  _clItems.forEach(function(item) {
+    var card = document.createElement('div');
+    card.className = 'cl-card';
+    card.dataset.clid = item.id;
+    card.title = '单击插入到编辑器 · 右键更多操作';
+
+    /* preview area */
+    var prev = document.createElement('div');
+    prev.className = 'cl-card-preview';
+
+    var badge = document.createElement('span');
+    badge.className = 'cl-type-badge';
+    badge.textContent = (DEFS[item.type] || { label: item.type }).label || item.type;
+    prev.appendChild(badge);
+
+    var iframe = document.createElement('iframe');
+    iframe.className = 'cl-card-iframe';
+    iframe.setAttribute('sandbox', 'allow-same-origin');
+    iframe.setAttribute('scrolling', 'no');
+    prev.appendChild(iframe);
+    card.appendChild(prev);
+
+    /* footer */
+    var foot = document.createElement('div');
+    foot.className = 'cl-card-foot';
+
+    var lbl = document.createElement('span');
+    lbl.className = 'cl-item-label';
+    lbl.textContent = item.label;
+    foot.appendChild(lbl);
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'cl-del-btn';
+    delBtn.title = '删除组件';
+    delBtn.textContent = '✕';
+    foot.appendChild(delBtn);
+
+    card.appendChild(foot);
+    body.appendChild(card);
+
+    /* scale iframe: fit to card width, center vertically */
+    (function(fr, pv) {
+      fr.addEventListener('load', function() {
+        /* skip the initial blank-page fire that happens before layout is ready */
+        var w = pv.offsetWidth;
+        if (!w) return;
+        var pvH = pv.offsetHeight || 110;
+        var scale = w / 600;
+        var scaledH = 400 * scale;
+        var topOffset = scaledH < pvH ? Math.round((pvH - scaledH) / 2) : 0;
+        fr.style.top = topOffset + 'px';
+        fr.style.transform = 'scale(' + scale + ')';
+      });
+    })(iframe, prev);
+
+    /* lazy-load srcdoc only when card enters viewport */
+    (function(fr, it) {
+      var loaded = false;
+      function load() {
+        if (loaded) return;
+        loaded = true;
+        var html = b2html(it.block).trim();
+        fr.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:8px;font-family:sans-serif;font-size:14px}</style></head><body>' + html + '</body></html>';
+      }
+      var obs = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) { load(); obs.disconnect(); }
+      }, { threshold: 0.01 });
+      obs.observe(fr);
+      /* fallback: load immediately if already visible */
+      requestAnimationFrame(load);
+    })(iframe, item);
+
+    (function(iid) {
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.cl-del-btn')) return;
+        insertFromLibrary(iid);
+      });
+      card.addEventListener('contextmenu', function(e) { e.preventDefault(); _openClCtx(e, iid); });
+      delBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        removeFromLibrary(iid);
+      });
+    })(item.id);
+  });
+}
+
+/* ── Insert component into editor ── */
+function insertFromLibrary(itemId) {
+  var item = _clItems.find(function(x){ return x.id === itemId; });
+  if (!item) return;
+  var nb = JSON.parse(JSON.stringify(item.block));
+  nb.id = uid();
+  var selIdx = _sel ? _blocks.findIndex(function(x){ return x.id === _sel; }) : -1;
+  if (selIdx >= 0) {
+    _blocks.splice(selIdx + 1, 0, nb);
+    var hint = $id('ehint'); if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+    var newEl = _buildBlockEl(nb);
+    var selEl = $id(_sel);
+    if (selEl && selEl.nextSibling) selEl.parentNode.insertBefore(newEl, selEl.nextSibling);
+    else if (selEl) selEl.parentNode.appendChild(newEl);
+    else $id('blist').appendChild(newEl);
+  } else {
+    _blocks.push(nb);
+    _appendBlockEl(nb);
+  }
+  _updateCount(); syncCode(); schedPv();
+  setTimeout(function() {
+    var el = $id(nb.id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setSelected(nb.id);
+  }, 40);
+}
+
+/* ── Remove from library ── */
+function removeFromLibrary(itemId) {
+  _clItems = _clItems.filter(function(x){ return x.id !== itemId; });
+  _clSave();
+  renderClLib();
+}
+
+/* ── Rename library item ── */
+function renameLibraryItem(itemId) {
+  var item = _clItems.find(function(x){ return x.id === itemId; });
+  if (!item) return;
+  var name = prompt('重命名组件：', item.label);
+  if (name === null || !name.trim()) return;
+  item.label = name.trim();
+  _clSave();
+  renderClLib();
+}
+
+/* ── Context menu for library ── */
+function _openClCtx(e, itemId) {
+  _clCtxItemId = itemId;
+  var m = $id('ctxm-cl');
+  m.style.left = e.clientX + 'px';
+  m.style.top  = e.clientY + 'px';
+  m.classList.add('open');
+  requestAnimationFrame(function() {
+    var r = m.getBoundingClientRect();
+    if (r.right  > window.innerWidth)  m.style.left = (e.clientX - r.width)  + 'px';
+    if (r.bottom > window.innerHeight) m.style.top  = (e.clientY - r.height) + 'px';
+  });
+}
+
+$id('cxcl-insert').addEventListener('click', function() {
+  if (_clCtxItemId) insertFromLibrary(_clCtxItemId);
+});
+$id('cxcl-edit').addEventListener('click', function() {
+  if (_clCtxItemId) editClItem(_clCtxItemId);
+});
+$id('cxcl-rename').addEventListener('click', function() {
+  if (_clCtxItemId) renameLibraryItem(_clCtxItemId);
+});
+$id('cxcl-del').addEventListener('click', function() {
+  if (_clCtxItemId && confirm('确定从组件库中删除此组件？')) removeFromLibrary(_clCtxItemId);
+});
+
+/* ── Library import dialog ── */
+var _clImportPreviewTimer = null;
+
+/* Open the import/edit dialog.
+   editItemId: if provided, pre-populate with that item's HTML & label (edit mode).
+               if null/undefined, open blank (new import mode). */
+function openClImportDlg(editItemId) {
+  _clEditingItemId = editItemId || null;
+  $id('cl-import-plain-chk').checked = false;
+  var dlgTitle = $id('cl-import-head').querySelector('span');
+  var confirmBtn = $id('cl-import-confirm');
+
+  if (_clEditingItemId) {
+    var item = _clItems.find(function(x){ return x.id === _clEditingItemId; });
+    if (!item) return;
+    /* Get HTML representation of the stored block */
+    var existingHtml = (item.block.type === 'raw')
+      ? (item.block.data.html || '')
+      : b2html(item.block).trim();
+    $id('cl-import-code').value = existingHtml;
+    $id('cl-import-name').value = item.label;
+    dlgTitle.textContent = '✎ 编辑组件';
+    confirmBtn.textContent = '保存修改';
+    /* Trigger initial preview */
+    _updateClImportPreview();
+  } else {
+    $id('cl-import-code').value = '';
+    $id('cl-import-name').value = '';
+    $id('cl-import-iframe').srcdoc = '';
+    dlgTitle.textContent = '📥 导入到组件库';
+    confirmBtn.textContent = '保存到组件库';
+  }
+
+  $id('cl-import-overlay').classList.add('open');
+  setTimeout(function(){ $id('cl-import-code').focus(); }, 50);
+}
+
+/* Open edit dialog for a specific library item */
+function editClItem(itemId) {
+  openClImportDlg(itemId);
+}
+
+/* Walk a DOM node and produce plain text, inserting \n at block boundaries and <br> */
+function _domToText(node) {
+  if (!node) return '';
+  var BLOCK = /^(P|DIV|H[1-6]|LI|TR|BLOCKQUOTE|PRE|ARTICLE|SECTION|HEADER|FOOTER|NAV|ASIDE|MAIN|FIGURE|FIGCAPTION|UL|OL|TABLE|THEAD|TBODY|TFOOT)$/;
+  var out = '';
+  function walk(n) {
+    if (n.nodeType === 3) { out += n.nodeValue; return; }
+    if (n.nodeType !== 1) return;
+    var tag = n.tagName.toUpperCase();
+    if (tag === 'BR') { out += '\n'; return; }
+    if (tag === 'SCRIPT' || tag === 'STYLE') return;
+    var isBlock = BLOCK.test(tag);
+    if (isBlock && out.length && out[out.length - 1] !== '\n') out += '\n';
+    for (var i = 0; i < n.childNodes.length; i++) walk(n.childNodes[i]);
+    if (isBlock && out.length && out[out.length - 1] !== '\n') out += '\n';
+  }
+  walk(node);
+  return out;
+}
+
+/* Convert HTML string to plain-text paragraphs HTML */
+function _clImportPlainHtml(html) {
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var txt = doc.body ? _domToText(doc.body) : html;
+  var lines = txt.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  return lines.length ? lines.map(function(l){ return '<p>' + esc(l) + '</p>'; }).join('\n') : '<p>' + esc(txt.trim()) + '</p>';
+}
+
+function _updateClImportPreview() {
+  clearTimeout(_clImportPreviewTimer);
+  _clImportPreviewTimer = setTimeout(function() {
+    var html = $id('cl-import-code').value.trim();
+    if (!html) { $id('cl-import-iframe').srcdoc = ''; return; }
+    var isPlain = $id('cl-import-plain-chk').checked;
+    var renderHtml = isPlain ? _clImportPlainHtml(html) : html;
+    /* Wrap in a minimal page for preview */
+    var previewHtml = wrapHTML('  ' + renderHtml);
+    /* Strip scripts for sandbox safety */
+    var doc = new DOMParser().parseFromString(previewHtml, 'text/html');
+    doc.querySelectorAll('script').forEach(function(s){ s.remove(); });
+    $id('cl-import-iframe').srcdoc = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  }, 350);
+}
+
+function closeClImportDlg() {
+  clearTimeout(_clImportPreviewTimer);
+  _clEditingItemId = null;
+  $id('cl-import-overlay').classList.remove('open');
+}
+
+function confirmClImport() {
+  var html = $id('cl-import-code').value.trim();
+  if (!html) {
+    /* Visual feedback: highlight the empty textarea */
+    var ta = $id('cl-import-code');
+    ta.focus();
+    ta.style.borderColor = '#e63946';
+    setTimeout(function(){ ta.style.borderColor = ''; }, 1500);
+    return;
+  }
+  var name = $id('cl-import-name').value.trim();
+  if (!name) name = '自定义组件';
+
+  /* Apply plain-text stripping if checkbox is checked */
+  if ($id('cl-import-plain-chk').checked) {
+    html = _clImportPlainHtml(html);
+  }
+
+  if (_clEditingItemId) {
+    /* Edit mode: update the existing item in-place */
+    var item = _clItems.find(function(x){ return x.id === _clEditingItemId; });
+    if (item) {
+      item.label = name;
+      item.type  = 'raw';
+      item.block = mkBlock('raw', { html: html });
+    }
+  } else {
+    /* New import mode: create a new item */
+    var block = mkBlock('raw', { html: html });
+    var item = {
+      id:    _clUid(),
+      label: name,
+      type:  'raw',
+      block: block
+    };
+    _clItems.push(item);
+  }
+
+  _clSave();
+  closeClImportDlg();
+  if (_ceMode !== 'cl') switchCeTab('cl');
+  else renderClLib();
+}
+
+$id('cl-import-close').addEventListener('click',   closeClImportDlg);
+$id('cl-import-cancel').addEventListener('click',  closeClImportDlg);
+$id('cl-import-confirm').addEventListener('click', confirmClImport);
+$id('cl-import-overlay').addEventListener('click', function(e){ if (e.target === this) closeClImportDlg(); });
+$id('cl-import-code').addEventListener('input', _updateClImportPreview);
+$id('cl-import-plain-chk').addEventListener('change', _updateClImportPreview);
+$id('cl-import-code').addEventListener('paste', function(e) {
+  var html = e.clipboardData && e.clipboardData.getData('text/html');
+  if (!html) return; // 没有 HTML 风格，退回浏览器默认纯文本粘贴
+  e.preventDefault();
+  var ta = e.target;
+  var start = ta.selectionStart, end = ta.selectionEnd;
+  var v = ta.value;
+  ta.value = v.slice(0, start) + html + v.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + html.length;
+  ta.dispatchEvent(new Event('input'));
+});
+$id('cl-import-btn').addEventListener('click',  function(){ openClImportDlg(); });
+
 window.addEventListener('load', function(){
   schedPv();
+  _clLoad(); // load persisted custom library
 });
 </script>
 </body>
