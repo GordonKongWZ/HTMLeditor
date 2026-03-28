@@ -4861,6 +4861,17 @@ $id('cl-import-cancel').addEventListener('click',  closeClImportDlg);
 $id('cl-import-confirm').addEventListener('click', confirmClImport);
 $id('cl-import-overlay').addEventListener('click', function(e){ if (e.target === this) closeClImportDlg(); });
 $id('cl-import-code').addEventListener('input', _updateClImportPreview);
+$id('cl-import-code').addEventListener('paste', function(e) {
+  var html = e.clipboardData && e.clipboardData.getData('text/html');
+  if (!html) return; // 没有 HTML 风格，退回浏览器默认纯文本粘贴
+  e.preventDefault();
+  var ta = e.target;
+  var start = ta.selectionStart, end = ta.selectionEnd;
+  var v = ta.value;
+  ta.value = v.slice(0, start) + html + v.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + html.length;
+  ta.dispatchEvent(new Event('input'));
+});
 $id('cl-import-btn').addEventListener('click',  function(){ openClImportDlg(); });
 
 window.addEventListener('load', function(){
