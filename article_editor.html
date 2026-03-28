@@ -4861,7 +4861,7 @@ $id('cl-import-cancel').addEventListener('click',  closeClImportDlg);
 $id('cl-import-confirm').addEventListener('click', confirmClImport);
 $id('cl-import-overlay').addEventListener('click', function(e){ if (e.target === this) closeClImportDlg(); });
 $id('cl-import-code').addEventListener('input', _updateClImportPreview);
-$id('cl-import-btn').addEventListener('click',  openClImportDlg);
+$id('cl-import-btn').addEventListener('click',  function(){ openClImportDlg(); });
 
 window.addEventListener('load', function(){
   schedPv();
