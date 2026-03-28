@@ -1877,7 +1877,12 @@ function _undo() {
   if (_undoStack.length === 0) return;
   var top = _undoStack[_undoStack.length - 1];
   if (top.type === 'text') {
-    /* Text marker: focus the block's CE and fire one native undo step. */
+    /* Text marker: focus the block's CE, fire one native undo step, then blur.
+       Blurring is critical: it makes _isEditingText() return false so the NEXT
+       Ctrl+Z is handled by our stack (popping B's marker, the structural snapshot,
+       etc.) rather than falling through to the browser's native undo in this CE.
+       We also delete _textEditedBids[bid] so that if the user later types in this
+       block again a fresh marker will be pushed. */
     _undoStack.pop();
     _redoStack.push({ type: 'text', bid: top.bid });
     var be = _findBlockCE(top.bid);
@@ -1885,7 +1890,9 @@ function _undo() {
       setSelected(top.bid);
       be.focus();
       document.execCommand('undo');
+      be.blur();
     }
+    delete _textEditedBids[top.bid];
   } else {
     /* Structural snapshot: rebuild the whole block list. */
     _redoStack.push(_snapshot());
@@ -1897,7 +1904,10 @@ function _redo() {
   if (_redoStack.length === 0) return;
   var top = _redoStack[_redoStack.length - 1];
   if (top.type === 'text') {
-    /* Text marker: focus the block's CE and fire one native redo step. */
+    /* Text marker: focus the block's CE, fire one native redo step, then blur.
+       Same rationale as _undo(): blur keeps _isEditingText() false so subsequent
+       Ctrl+Y presses continue through our stack.  Delete _textEditedBids[bid] so
+       future user edits to this block push a new marker correctly. */
     _redoStack.pop();
     _undoStack.push({ type: 'text', bid: top.bid });
     var be = _findBlockCE(top.bid);
@@ -1905,7 +1915,9 @@ function _redo() {
       setSelected(top.bid);
       be.focus();
       document.execCommand('redo');
+      be.blur();
     }
+    delete _textEditedBids[top.bid];
   } else {
     /* Structural snapshot: rebuild the whole block list. */
     _undoStack.push(_snapshot());
@@ -5661,6 +5673,9 @@ $id('cl-import-btn').addEventListener('click',  function(){ openClImportDlg(); }
   bl.addEventListener('input', function(e) {
     var ce = e.target;
     if (!ce || !ce.isContentEditable) return;
+    /* Ignore synthetic input events produced by our own execCommand('undo'/'redo')
+       calls.  These would otherwise push spurious markers and wipe _redoStack. */
+    if (e.inputType === 'historyUndo' || e.inputType === 'historyRedo') return;
     var bi = ce.closest && ce.closest('.bi');
     if (!bi || !bi.id) return;
     var bid = bi.id;
