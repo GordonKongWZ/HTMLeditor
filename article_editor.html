@@ -392,6 +392,49 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 .edit-btn:hover{border-color:var(--acm);color:var(--ac)}
 
+/* ── Batch Media Dialog ── */
+#batch-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center
+}
+#batch-overlay.open{display:flex}
+#batch-box{
+  background:#fff;border-radius:var(--r12);padding:18px 22px 16px;
+  width:92vw;max-width:780px;max-height:88vh;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+#batch-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#batch-title{font-size:14px;font-weight:700;color:var(--t0)}
+#batch-tabs{display:flex;gap:5px}
+#batch-close{
+  background:none;border:none;cursor:pointer;font-size:14px;
+  color:var(--t2);padding:2px 6px;border-radius:var(--r4);line-height:1
+}
+#batch-close:hover{background:var(--bg1);color:var(--t0)}
+#batch-content{flex:1;overflow:auto;min-height:120px}
+.batch-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.batch-tbl th{
+  background:var(--acl);color:var(--acd);font-weight:500;
+  padding:5px 8px;border:.5px solid var(--bm);white-space:nowrap;text-align:left
+}
+.batch-tbl td{border:.5px solid var(--bm);padding:3px 5px}
+.batch-tbl td input,.batch-tbl td select{
+  width:100%;border:none;padding:3px 5px;font-size:11px;font-family:var(--fs);
+  background:transparent;outline:none;color:var(--t0)
+}
+.batch-tbl td input:focus,.batch-tbl td select:focus{
+  background:var(--acl);border-radius:2px
+}
+.batch-tbl td:first-child{text-align:center;color:var(--t2);font-size:10px;width:24px;padding:0 4px}
+#batch-json{
+  width:100%;height:100%;min-height:200px;resize:vertical;
+  border:1px solid var(--bm);border-radius:var(--r8);
+  padding:8px 10px;font-family:var(--fm);font-size:11px;
+  color:var(--t1);background:var(--bg1);outline:none;box-sizing:border-box
+}
+#batch-json:focus{border-color:var(--acm);box-shadow:0 0 0 3px rgba(38,68,186,.1)}
+
 /* ── Rich text block ── */
 .rich-be{white-space:normal}
 .rich-be b,.rich-be strong{font-weight:700}
@@ -965,6 +1008,25 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   </div>
 </div>
 
+<!-- Batch Media Edit Dialog -->
+<div id="batch-overlay">
+  <div id="batch-box">
+    <div id="batch-head">
+      <span id="batch-title">批量编辑</span>
+      <div id="batch-tabs">
+        <button class="abtn on" id="batch-tab-tbl">表格</button>
+        <button class="abtn" id="batch-tab-json">JSON</button>
+      </div>
+      <button id="batch-close">✕</button>
+    </div>
+    <div id="batch-content"></div>
+    <div class="dbtns">
+      <button class="dcancel" id="batch-cancel">取消</button>
+      <button class="dconfirm" id="batch-confirm">确定</button>
+    </div>
+  </div>
+</div>
+
 <!-- Copy Code Dialog -->
 <div id="copy-overlay">
   <div id="copy-box">
@@ -1102,6 +1164,8 @@ var _eqMode  = 'block';
 var _pvTimer = null;
 var _idSeq   = 0;
 var _editingBlock = null;
+var _batchMediaBlocks = []; /* blocks being edited in batch media dialog */
+var _batchMediaMode = 'tbl'; /* 'tbl' | 'json' */
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 var _draggingId = null; // block id being dragged for reorder
@@ -1884,10 +1948,18 @@ function _appendBlockEl(b) {
 function _buildInner(inner, b) {
   inner.innerHTML = '';
 
-  function addEditBtn(label, fn) {
+  /* batchFn (optional): called instead of fn(b) when block is in active multi-selection */
+  function addEditBtn(label, fn, batchFn) {
     var btn = document.createElement('button');
     btn.className = 'edit-btn'; btn.textContent = '✏ ' + label;
-    btn.addEventListener('click', function(e){ e.stopPropagation(); fn(b); });
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if (batchFn && _multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) {
+        batchFn();
+      } else {
+        fn(b);
+      }
+    });
     inner.appendChild(btn);
   }
 
@@ -1914,7 +1986,35 @@ function _buildInner(inner, b) {
       btn.title = a.label;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        b.data.align = (b.data.align === a.v) ? '' : a.v;
+        var newAlign = (b.data.align === a.v) ? '' : a.v;
+        /* Batch: apply to all selected text blocks when in multi-select */
+        var targetIds = (_multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) ? _multiSel : [b.id];
+        _blocks.forEach(function(blk) {
+          if (targetIds.indexOf(blk.id) < 0) return;
+          if (blk.type !== 'p' && !/^h[1-5]$/.test(blk.type)) return;
+          blk.data = blk.data || {};
+          blk.data.align = newAlign;
+          if (blk.id !== b.id) {
+            /* Update align button visual state in other selected blocks */
+            var blkEl = $id(blk.id);
+            if (blkEl) {
+              var aw = blkEl.querySelector('.align-left');
+              if (aw) {
+                aw.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
+                if (newAlign) {
+                  ALIGN_DEFS.forEach(function(ad, ai) {
+                    if (ad.v === newAlign) {
+                      var btns = aw.querySelectorAll('.abtn');
+                      if (btns[ai]) btns[ai].classList.add('on');
+                    }
+                  });
+                }
+              }
+            }
+          }
+        });
+        /* Update current block UI */
+        b.data.align = newAlign;
         wrap.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
         if (b.data.align) btn.classList.add('on');
         syncCode(); schedPv();
@@ -1958,7 +2058,20 @@ function _buildInner(inner, b) {
       btn.textContent = it.l;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        _convertBlockTypeInPlace(b, it.t);
+        /* Batch: convert all selected text blocks when in multi-select */
+        if (_multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) {
+          var targetIds = _multiSel.slice();
+          targetIds.forEach(function(id) {
+            var blk = _blocks.find(function(bl) { return bl.id === id; });
+            if (blk && (blk.type === 'p' || /^h[1-5]$/.test(blk.type))) {
+              _convertBlockTypeInPlace(blk, it.t);
+            }
+          });
+          /* Re-apply msel class to rebuilt elements */
+          _multiSel.forEach(function(mid) { var el=$id(mid); if(el) el.classList.add('msel'); });
+        } else {
+          _convertBlockTypeInPlace(b, it.t);
+        }
       });
       row.appendChild(btn);
     });
@@ -2077,7 +2190,12 @@ function _buildInner(inner, b) {
       nm.textContent = b.data.src ? b.data.src.substring(0,44) : '未设置图片 URL';
       ph.appendChild(nm); wrap.appendChild(ph);
       var cap = mkDiv('imgcap'); cap.textContent = b.data.caption||'图片标题'; wrap.appendChild(cap);
-      addEditBtn('编辑图片', openImgDialog);
+      addEditBtn('编辑图片', openImgDialog, function() {
+        /* Batch: open batch editor for all selected image blocks */
+        openBatchMediaDlg(_blocks.filter(function(blk) {
+          return _multiSel.indexOf(blk.id) >= 0 && blk.type === 'img';
+        }), 'img');
+      });
       break;
     }
     case 'video': {
@@ -2088,7 +2206,12 @@ function _buildInner(inner, b) {
       nm.textContent = b.data.src ? b.data.src.substring(0,44) : '未设置视频 URL';
       ph.appendChild(nm); wrap.appendChild(ph);
       var cap = mkDiv('vidcap'); cap.textContent = b.data.caption||'视频标题'; wrap.appendChild(cap);
-      addEditBtn('编辑视频', openVideoDialog);
+      addEditBtn('编辑视频', openVideoDialog, function() {
+        /* Batch: open batch editor for all selected video blocks */
+        openBatchMediaDlg(_blocks.filter(function(blk) {
+          return _multiSel.indexOf(blk.id) >= 0 && blk.type === 'video';
+        }), 'video');
+      });
       break;
     }
     case 'table': {
@@ -3249,6 +3372,152 @@ function confirmVideo() {
   if (_editingBlock) { Object.assign(_editingBlock.data,data); _refreshInner(_editingBlock); syncCode(); schedPv(); }
   else insertBlock('video',data);
 }
+
+/* ── Batch Media Dialog ── */
+/* Extensible dispatch table: add entries here to support new batch-editable block types.
+   Each entry: { type, title, fields }
+   fields: array of { key, label, kind:'text'|'select', options:[{v,l}] } */
+var _BATCH_DEFS = {
+  img: {
+    title: '批量编辑图片',
+    fields: [
+      { key:'src',     label:'图片 URL / 路径', kind:'text' },
+      { key:'alt',     label:'Alt 文本',        kind:'text' },
+      { key:'caption', label:'图片标题',         kind:'text' },
+      { key:'fignum',  label:'图号',             kind:'text' },
+    ]
+  },
+  video: {
+    title: '批量编辑视频',
+    fields: [
+      { key:'vtype',   label:'类型', kind:'select', options:[{v:'file',l:'本地/直链'},{v:'iframe',l:'嵌入 iframe'}] },
+      { key:'src',     label:'URL / src',  kind:'text' },
+      { key:'caption', label:'视频标题',   kind:'text' },
+      { key:'fignum',  label:'视频号',     kind:'text' },
+    ]
+  }
+  /* ── Add future batch-editable types here ── */
+};
+
+function openBatchMediaDlg(blocks, type) {
+  if (!blocks || blocks.length === 0) return;
+  var def = _BATCH_DEFS[type];
+  if (!def) return; /* type not registered for batch editing */
+  _batchMediaBlocks = blocks;
+  _batchMediaMode = 'tbl';
+  $id('batch-title').textContent = def.title + '（' + blocks.length + ' 个）';
+  $id('batch-tab-tbl').classList.add('on');
+  $id('batch-tab-json').classList.remove('on');
+  _renderBatchContent(type);
+  $id('batch-overlay').classList.add('open');
+}
+
+function _renderBatchContent(type) {
+  var def = _BATCH_DEFS[type];
+  var content = $id('batch-content');
+  if (_batchMediaMode === 'tbl') {
+    /* Table mode */
+    var html = '<table class="batch-tbl"><thead><tr><th>#</th>';
+    def.fields.forEach(function(f){ html += '<th>'+esc(f.label)+'</th>'; });
+    html += '</tr></thead><tbody>';
+    _batchMediaBlocks.forEach(function(blk, i) {
+      html += '<tr><td>' + (i+1) + '</td>';
+      def.fields.forEach(function(f) {
+        var val = (blk.data && blk.data[f.key] !== undefined) ? blk.data[f.key] : '';
+        if (f.kind === 'select') {
+          html += '<td><select data-row="'+i+'" data-key="'+esc(f.key)+'">';
+          f.options.forEach(function(opt) {
+            html += '<option value="'+esc(opt.v)+'"'+(val===opt.v?' selected':'')+'>'+esc(opt.l)+'</option>';
+          });
+          html += '</select></td>';
+        } else {
+          html += '<td><input type="text" data-row="'+i+'" data-key="'+esc(f.key)+'" value="'+esc(val)+'" placeholder="'+esc(f.label)+'"></td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    content.innerHTML = html;
+  } else {
+    /* JSON mode */
+    var arr = _batchMediaBlocks.map(function(blk) {
+      var obj = {};
+      def.fields.forEach(function(f) {
+        obj[f.key] = (blk.data && blk.data[f.key] !== undefined) ? blk.data[f.key] : '';
+      });
+      return obj;
+    });
+    content.innerHTML = '<textarea id="batch-json" spellcheck="false">'+esc(JSON.stringify(arr, null, 2))+'</textarea>';
+  }
+}
+
+function _commitBatchMedia(type) {
+  var def = _BATCH_DEFS[type];
+  if (!def) return;
+  if (_batchMediaMode === 'tbl') {
+    _batchMediaBlocks.forEach(function(blk, i) {
+      def.fields.forEach(function(f) {
+        var inp = $id('batch-content').querySelector('[data-row="'+i+'"][data-key="'+f.key+'"]');
+        if (inp) {
+          blk.data = blk.data || {};
+          blk.data[f.key] = inp.value.trim !== undefined ? inp.value.trim() : inp.value;
+        }
+      });
+      _refreshInner(blk);
+    });
+  } else {
+    /* JSON mode */
+    var ta = $id('batch-json');
+    if (!ta) return;
+    var arr;
+    try { arr = JSON.parse(ta.value); } catch(e) { alert('JSON 格式错误：' + e.message); return; }
+    if (!Array.isArray(arr)) { alert('JSON 必须是数组'); return; }
+    arr.forEach(function(obj, i) {
+      var blk = _batchMediaBlocks[i];
+      if (!blk) return;
+      def.fields.forEach(function(f) {
+        if (obj[f.key] !== undefined) {
+          blk.data = blk.data || {};
+          blk.data[f.key] = String(obj[f.key]).trim();
+        }
+      });
+      _refreshInner(blk);
+    });
+  }
+  syncCode(); schedPv();
+}
+
+function closeBatchDlg() { $id('batch-overlay').classList.remove('open'); _batchMediaBlocks = []; }
+
+(function() {
+  var _batchType = null;
+  $id('batch-close').addEventListener('click', closeBatchDlg);
+  $id('batch-cancel').addEventListener('click', closeBatchDlg);
+  $id('batch-confirm').addEventListener('click', function() {
+    _commitBatchMedia(_batchType);
+    closeBatchDlg();
+  });
+  $id('batch-tab-tbl').addEventListener('click', function() {
+    if (_batchMediaMode === 'tbl') return;
+    _batchMediaMode = 'tbl';
+    $id('batch-tab-tbl').classList.add('on');
+    $id('batch-tab-json').classList.remove('on');
+    _renderBatchContent(_batchType);
+  });
+  $id('batch-tab-json').addEventListener('click', function() {
+    if (_batchMediaMode === 'json') return;
+    _batchMediaMode = 'json';
+    $id('batch-tab-json').classList.add('on');
+    $id('batch-tab-tbl').classList.remove('on');
+    _renderBatchContent(_batchType);
+  });
+  /* Intercept openBatchMediaDlg to capture type for the closure */
+  var _origOpen = openBatchMediaDlg;
+  openBatchMediaDlg = function(blocks, type) {
+    _batchType = type;
+    _origOpen(blocks, type);
+  };
+})();
 
 /* ── Equation ── */
 var _dEqPv = debounce(function(){
