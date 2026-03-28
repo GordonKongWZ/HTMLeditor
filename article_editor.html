@@ -1173,12 +1173,10 @@ var _syncingFromCode = false; // guard: prevent feedback loop when code drives b
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 var _draggingId = null; // block id being dragged for reorder
 var _treeMode = true; // true = tree view; false = raw HTML textarea
-var _undoStack = [];            /* array of {blocks, sel} snapshots for undo */
-var _redoStack = [];            /* array of {blocks, sel} snapshots for redo */
-var _undoMaxSize = 50;          /* maximum undo history depth */
-var _textSnapshotPre = null;    /* snapshot captured at focusin, before the text-edit session */
-var _textDebounceTimer = null;  /* debounce timer for mid-session periodic text snapshots */
-var _textDirty = false;         /* true when text has changed since last text-snapshot flush */
+var _undoStack = [];         /* array of snapshot or text-marker entries for undo */
+var _redoStack = [];         /* array of snapshot or text-marker entries for redo */
+var _undoMaxSize = 50;       /* maximum undo history depth */
+var _textEditedBids = {};    /* bid → true for blocks that already have a text-marker on _undoStack */
 var _treeExpanded = {}; // bid → bool: whether that block is expanded in tree
 var _syncTreeTimer = null; // debounce timer for tree rebuild
 var TREE_DEPTH_MAX = 5; // max inner-element depth to render in expanded block tree
@@ -1804,62 +1802,66 @@ function makeRichBE(content, placeholder, opts) {
 }
 
 /* =========================================================
-   UNDO / REDO -- unified stack for block-level and text changes
-   Text edits are captured via focusin/input/focusout delegation
-   on #blist.  Block structural operations push before each mutation
-   via _pushUndo().  Ctrl+Z / Ctrl+Y are intercepted globally so
-   the same stack is used regardless of whether a contenteditable
-   is focused.
+   UNDO / REDO — two-tier unified stack
+   ─────────────────────────────────────────────────────────
+   Stack entries are one of two shapes:
+
+     Structural snapshot  { blocks:[…], sel:'bid' }
+       Full clone of _blocks.  Used for add/delete/move/
+       duplicate/split/merge/paste/type-convert/align ops.
+       Applied by _applySnapshot() which rebuilds the DOM.
+
+     Text marker          { type:'text', bid:'bid' }
+       Lightweight record that a block's contenteditable
+       changed.  Applied by focusing that block's CE and
+       calling document.execCommand('undo'/'redo'), which
+       delegates to the browser's own character-level undo
+       history for that element.
+
+   Why this works
+   ─────────────
+   Browsers maintain a per-contenteditable undo history that
+   tracks every keystroke.  We just need to (a) make the right
+   CE active and (b) trigger execCommand('undo'/'redo') so the
+   browser applies one step of its own history.  This gives
+   native char-level granularity without us having to snapshot
+   text content at all.
+
+   Ctrl+Z/Y while editing:
+     The keydown guard (_isEditingText) lets the event fall
+     through unchanged — the browser handles it natively.
+
+   Ctrl+Z/Y while NOT editing:
+     Our handler calls _undo()/_redo(), which pops the top
+     entry and either applies a structural snapshot or focuses
+     the right block's CE and fires execCommand.
    ========================================================= */
+
 function _snapshot() {
   return { blocks: JSON.parse(JSON.stringify(_blocks)), sel: _sel };
 }
 
-/* Schedule a periodic mid-session text snapshot after 2 s idle. */
-function _schedTextSnap() {
-  _textDirty = true;
-  clearTimeout(_textDebounceTimer);
-  _textDebounceTimer = setTimeout(function() { _flushTextSnap(false); }, 2000);
-}
-
-/* Commit the pre-edit snapshot to the undo stack.
-   isBlur=true  → called on focusout: flush and clear _textSnapshotPre.
-   isBlur=false → called from debounce timer: flush and update _textSnapshotPre
-                  to current state so the next idle period gets its own step. */
-function _flushTextSnap(isBlur) {
-  clearTimeout(_textDebounceTimer);
-  _textDebounceTimer = null;
-  if (!_textDirty || !_textSnapshotPre) {
-    if (isBlur) _textSnapshotPre = null;
-    _textDirty = false;
-    return;
-  }
-  _undoStack.push(_textSnapshotPre);
-  if (_undoStack.length > _undoMaxSize) _undoStack.shift();
-  _redoStack = [];
-  _textDirty = false;
-  if (isBlur) {
-    _textSnapshotPre = null;
-  } else {
-    _textSnapshotPre = _snapshot(); /* next chunk's "before" state = current state */
-  }
+/* Return the primary contenteditable element inside block bid, or null. */
+function _findBlockCE(bid) {
+  var el = $id(bid);
+  return el ? (el.querySelector('.be') || null) : null;
 }
 
 /* Called before every structural block operation.
-   Flushes any pending text snapshot first so text edits and structural
-   changes appear in the correct order in the undo stack. */
+   Clears the per-block text-marker registry so each new
+   structural period starts clean. */
 function _pushUndo() {
-  _flushTextSnap(true); /* commit pending text changes before structural snapshot */
+  _textEditedBids = {};
   _undoStack.push(_snapshot());
   if (_undoStack.length > _undoMaxSize) _undoStack.shift();
   _redoStack = [];
 }
 
 function _applySnapshot(snap) {
-  /* Cancel any pending text snapshot – the DOM is about to be rebuilt */
-  clearTimeout(_textDebounceTimer); _textDebounceTimer = null;
-  _textSnapshotPre = null; _textDirty = false;
-  _blocks = JSON.parse(JSON.stringify(snap.blocks)); /* deep clone to protect snapshot from mutation */
+  /* Rebuild DOM from snapshot; native CE undo history is discarded here
+     so the block-text marker registry must be cleared too. */
+  _textEditedBids = {};
+  _blocks = JSON.parse(JSON.stringify(snap.blocks)); /* deep clone to protect snapshot */
   _sel = null;
   var bl = $id('blist');
   bl.innerHTML = '';
@@ -1872,25 +1874,43 @@ function _applySnapshot(snap) {
 }
 
 function _undo() {
-  /* Mid-edit undo: user is typing and hasn't paused long enough for the
-     debounce to fire yet.  Use _textSnapshotPre directly as the undo target. */
-  if (_textSnapshotPre !== null && _textDirty) {
-    clearTimeout(_textDebounceTimer); _textDebounceTimer = null;
-    _redoStack.push(_snapshot());
-    var snap = _textSnapshotPre;
-    _textSnapshotPre = null; _textDirty = false;
-    _applySnapshot(snap);
-    return;
-  }
   if (_undoStack.length === 0) return;
-  _redoStack.push(_snapshot());
-  _applySnapshot(_undoStack.pop());
+  var top = _undoStack[_undoStack.length - 1];
+  if (top.type === 'text') {
+    /* Text marker: focus the block's CE and fire one native undo step. */
+    _undoStack.pop();
+    _redoStack.push({ type: 'text', bid: top.bid });
+    var be = _findBlockCE(top.bid);
+    if (be) {
+      setSelected(top.bid);
+      be.focus();
+      document.execCommand('undo');
+    }
+  } else {
+    /* Structural snapshot: rebuild the whole block list. */
+    _redoStack.push(_snapshot());
+    _applySnapshot(_undoStack.pop());
+  }
 }
 
 function _redo() {
   if (_redoStack.length === 0) return;
-  _undoStack.push(_snapshot());
-  _applySnapshot(_redoStack.pop());
+  var top = _redoStack[_redoStack.length - 1];
+  if (top.type === 'text') {
+    /* Text marker: focus the block's CE and fire one native redo step. */
+    _redoStack.pop();
+    _undoStack.push({ type: 'text', bid: top.bid });
+    var be = _findBlockCE(top.bid);
+    if (be) {
+      setSelected(top.bid);
+      be.focus();
+      document.execCommand('redo');
+    }
+  } else {
+    /* Structural snapshot: rebuild the whole block list. */
+    _undoStack.push(_snapshot());
+    _applySnapshot(_redoStack.pop());
+  }
 }
 
 /* =========================================================
@@ -5171,16 +5191,17 @@ document.addEventListener('keydown', function(e) {
   }
 
   // Ctrl/Meta+Z: undo; Ctrl/Meta+Y or Ctrl/Meta+Shift+Z: redo
-  // Always intercepted (even while editing text) so text and structural
-  // changes share the same unified undo stack.
+  // While editing text the event falls through so the browser's own
+  // character-level undo/redo runs natively inside the focused CE.
+  // While not editing, our custom stack handles structural and text-marker entries.
   if ((e.ctrlKey || e.metaKey) && !e.altKey) {
     var k = e.key.toLowerCase();
     if (k === 'z' && !e.shiftKey) {
-      if (!_isModalOpen()) { e.preventDefault(); _undo(); }
+      if (!_isEditingText() && !_isModalOpen()) { e.preventDefault(); _undo(); }
       return;
     }
     if (k === 'y' || (k === 'z' && e.shiftKey)) {
-      if (!_isModalOpen()) { e.preventDefault(); _redo(); }
+      if (!_isEditingText() && !_isModalOpen()) { e.preventDefault(); _redo(); }
       return;
     }
   }
@@ -5628,42 +5649,28 @@ $id('cl-import-code').addEventListener('paste', function(e) {
 $id('cl-import-btn').addEventListener('click',  function(){ openClImportDlg(); });
 
 /* =========================================================
-   UNIFIED TEXT-EDIT SNAPSHOT DELEGATION
-   Captures block content changes into the shared undo stack.
-   Runs on ALL contenteditable elements inside #blist so that
-   typing in any block type is undoable via the same Ctrl+Z/Y
-   that handles structural block operations.
+   TEXT-CHANGE MARKER DELEGATION
+   Listens for 'input' on any contenteditable inside #blist.
+   The FIRST change in a block since the last structural operation
+   pushes a lightweight text-marker { type:'text', bid } onto the
+   undo stack.  Subsequent keystrokes in the same block do not push
+   again — the browser's own undo history for that CE handles them.
    ========================================================= */
 (function() {
   var bl = $id('blist');
-
-  /* focusin: capture the "before this edit session" snapshot */
-  bl.addEventListener('focusin', function(e) {
-    var ce = e.target;
-    if (!ce || !ce.isContentEditable) return;
-    if (!ce.closest || !ce.closest('.bi')) return;
-    if (_textSnapshotPre === null) {
-      _textSnapshotPre = _snapshot();
-      _textDirty = false;
-    }
-  });
-
-  /* input: schedule a periodic snapshot (debounced 2 s) */
   bl.addEventListener('input', function(e) {
     var ce = e.target;
     if (!ce || !ce.isContentEditable) return;
-    if (!ce.closest || !ce.closest('.bi')) return;
-    _schedTextSnap();
-  });
-
-  /* focusout: flush immediately when leaving a contenteditable */
-  bl.addEventListener('focusout', function(e) {
-    var ce = e.target;
-    if (!ce || !ce.isContentEditable) return;
-    if (!ce.closest || !ce.closest('.bi')) return;
-    /* When focus moves to another block contenteditable, flush this block's
-       changes now; the focusin handler for the next block will start fresh. */
-    _flushTextSnap(true);
+    var bi = ce.closest && ce.closest('.bi');
+    if (!bi || !bi.id) return;
+    var bid = bi.id;
+    /* Push at most one text marker per block per structural period. */
+    if (!_textEditedBids[bid]) {
+      _textEditedBids[bid] = true;
+      _undoStack.push({ type: 'text', bid: bid });
+      if (_undoStack.length > _undoMaxSize) _undoStack.shift();
+      _redoStack = []; /* new text change invalidates the redo branch */
+    }
   });
 }());
 
