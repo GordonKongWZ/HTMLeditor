@@ -392,6 +392,49 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 .edit-btn:hover{border-color:var(--acm);color:var(--ac)}
 
+/* ── Batch Media Dialog ── */
+#batch-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:center;justify-content:center
+}
+#batch-overlay.open{display:flex}
+#batch-box{
+  background:#fff;border-radius:var(--r12);padding:18px 22px 16px;
+  width:92vw;max-width:780px;max-height:88vh;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)
+}
+#batch-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#batch-title{font-size:14px;font-weight:700;color:var(--t0)}
+#batch-tabs{display:flex;gap:5px}
+#batch-close{
+  background:none;border:none;cursor:pointer;font-size:14px;
+  color:var(--t2);padding:2px 6px;border-radius:var(--r4);line-height:1
+}
+#batch-close:hover{background:var(--bg1);color:var(--t0)}
+#batch-content{flex:1;overflow:auto;min-height:120px}
+.batch-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.batch-tbl th{
+  background:var(--acl);color:var(--acd);font-weight:500;
+  padding:5px 8px;border:.5px solid var(--bm);white-space:nowrap;text-align:left
+}
+.batch-tbl td{border:.5px solid var(--bm);padding:3px 5px}
+.batch-tbl td input,.batch-tbl td select{
+  width:100%;border:none;padding:3px 5px;font-size:11px;font-family:var(--fs);
+  background:transparent;outline:none;color:var(--t0)
+}
+.batch-tbl td input:focus,.batch-tbl td select:focus{
+  background:var(--acl);border-radius:2px
+}
+.batch-tbl td:first-child{text-align:center;color:var(--t2);font-size:10px;width:24px;padding:0 4px}
+#batch-json{
+  width:100%;height:100%;min-height:200px;resize:vertical;
+  border:1px solid var(--bm);border-radius:var(--r8);
+  padding:8px 10px;font-family:var(--fm);font-size:11px;
+  color:var(--t1);background:var(--bg1);outline:none;box-sizing:border-box
+}
+#batch-json:focus{border-color:var(--acm);box-shadow:0 0 0 3px rgba(38,68,186,.1)}
+
 /* ── Rich text block ── */
 .rich-be{white-space:normal}
 .rich-be b,.rich-be strong{font-weight:700}
@@ -965,6 +1008,25 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   </div>
 </div>
 
+<!-- Batch Media Edit Dialog -->
+<div id="batch-overlay">
+  <div id="batch-box">
+    <div id="batch-head">
+      <span id="batch-title">批量编辑</span>
+      <div id="batch-tabs">
+        <button class="abtn on" id="batch-tab-tbl">表格</button>
+        <button class="abtn" id="batch-tab-json">JSON</button>
+      </div>
+      <button id="batch-close">✕</button>
+    </div>
+    <div id="batch-content"></div>
+    <div class="dbtns">
+      <button class="dcancel" id="batch-cancel">取消</button>
+      <button class="dconfirm" id="batch-confirm">确定</button>
+    </div>
+  </div>
+</div>
+
 <!-- Copy Code Dialog -->
 <div id="copy-overlay">
   <div id="copy-box">
@@ -1102,6 +1164,9 @@ var _eqMode  = 'block';
 var _pvTimer = null;
 var _idSeq   = 0;
 var _editingBlock = null;
+var _batchMediaBlocks = []; /* blocks being edited in batch media dialog */
+var _batchMediaMode = 'tbl'; /* 'tbl' | 'json' */
+var _batchType = null;       /* block type currently in batch dialog */
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 var _draggingId = null; // block id being dragged for reorder
@@ -1884,10 +1949,18 @@ function _appendBlockEl(b) {
 function _buildInner(inner, b) {
   inner.innerHTML = '';
 
-  function addEditBtn(label, fn) {
+  /* batchFn (optional): called instead of fn(b) when block is in active multi-selection */
+  function addEditBtn(label, fn, batchFn) {
     var btn = document.createElement('button');
     btn.className = 'edit-btn'; btn.textContent = '✏ ' + label;
-    btn.addEventListener('click', function(e){ e.stopPropagation(); fn(b); });
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if (batchFn && _multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) {
+        batchFn();
+      } else {
+        fn(b);
+      }
+    });
     inner.appendChild(btn);
   }
 
@@ -1914,7 +1987,35 @@ function _buildInner(inner, b) {
       btn.title = a.label;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        b.data.align = (b.data.align === a.v) ? '' : a.v;
+        var newAlign = (b.data.align === a.v) ? '' : a.v;
+        /* Batch: apply to all selected text blocks when in multi-select */
+        var targetIds = (_multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) ? _multiSel : [b.id];
+        _blocks.forEach(function(blk) {
+          if (targetIds.indexOf(blk.id) < 0) return;
+          if (blk.type !== 'p' && !/^h[1-5]$/.test(blk.type)) return;
+          blk.data = blk.data || {};
+          blk.data.align = newAlign;
+          if (blk.id !== b.id) {
+            /* Update align button visual state in other selected blocks */
+            var blkEl = $id(blk.id);
+            if (blkEl) {
+              var aw = blkEl.querySelector('.align-left');
+              if (aw) {
+                aw.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
+                if (newAlign) {
+                  ALIGN_DEFS.forEach(function(ad, ai) {
+                    if (ad.v === newAlign) {
+                      var btns = aw.querySelectorAll('.abtn');
+                      if (btns[ai]) btns[ai].classList.add('on');
+                    }
+                  });
+                }
+              }
+            }
+          }
+        });
+        /* Update current block UI */
+        b.data.align = newAlign;
         wrap.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
         if (b.data.align) btn.classList.add('on');
         syncCode(); schedPv();
@@ -1958,7 +2059,20 @@ function _buildInner(inner, b) {
       btn.textContent = it.l;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        _convertBlockTypeInPlace(b, it.t);
+        /* Batch: convert all selected text blocks when in multi-select */
+        if (_multiSel.length > 0 && _multiSel.indexOf(b.id) >= 0) {
+          var targetIds = _multiSel.slice();
+          targetIds.forEach(function(id) {
+            var blk = _blocks.find(function(bl) { return bl.id === id; });
+            if (blk && (blk.type === 'p' || /^h[1-5]$/.test(blk.type))) {
+              _convertBlockTypeInPlace(blk, it.t);
+            }
+          });
+          /* Re-apply msel class to rebuilt elements */
+          _multiSel.forEach(function(mid) { var el = $id(mid); if(el) el.classList.add('msel'); });
+        } else {
+          _convertBlockTypeInPlace(b, it.t);
+        }
       });
       row.appendChild(btn);
     });
@@ -2077,7 +2191,12 @@ function _buildInner(inner, b) {
       nm.textContent = b.data.src ? b.data.src.substring(0,44) : '未设置图片 URL';
       ph.appendChild(nm); wrap.appendChild(ph);
       var cap = mkDiv('imgcap'); cap.textContent = b.data.caption||'图片标题'; wrap.appendChild(cap);
-      addEditBtn('编辑图片', openImgDialog);
+      addEditBtn('编辑图片', openImgDialog, function() {
+        /* Batch: open batch editor for all selected image blocks */
+        openBatchMediaDlg(_blocks.filter(function(blk) {
+          return _multiSel.indexOf(blk.id) >= 0 && blk.type === 'img';
+        }), 'img');
+      });
       break;
     }
     case 'video': {
@@ -2088,7 +2207,12 @@ function _buildInner(inner, b) {
       nm.textContent = b.data.src ? b.data.src.substring(0,44) : '未设置视频 URL';
       ph.appendChild(nm); wrap.appendChild(ph);
       var cap = mkDiv('vidcap'); cap.textContent = b.data.caption||'视频标题'; wrap.appendChild(cap);
-      addEditBtn('编辑视频', openVideoDialog);
+      addEditBtn('编辑视频', openVideoDialog, function() {
+        /* Batch: open batch editor for all selected video blocks */
+        openBatchMediaDlg(_blocks.filter(function(blk) {
+          return _multiSel.indexOf(blk.id) >= 0 && blk.type === 'video';
+        }), 'video');
+      });
       break;
     }
     case 'table': {
@@ -2168,12 +2292,29 @@ function _refreshInner(b) {
 /* =========================================================
    SELECTION
    ========================================================= */
+/* Remove any preview-side selection highlights (_pv_hl_ctx outlines) and, when the
+   editor is in charge (not syncing from preview), also clear the browser native text
+   selection inside the preview iframe. */
+function clearPvHighlights() {
+  try {
+    var fdoc = _pvCtxMenuDoc;
+    if (!fdoc) return;
+    fdoc.querySelectorAll('._pv_hl_ctx').forEach(function(el){ el.classList.remove('_pv_hl_ctx'); });
+    if (!_updatingFromPv) {
+      var win = fdoc.defaultView;
+      if (win && win.getSelection) { var s = win.getSelection(); if (s) s.removeAllRanges(); }
+    }
+  } catch(e) {}
+}
+
 function setSelected(id) {
   if (id && _multiSel.length > 0) clearMultiSel();
   if (_sel) { var p=$id(_sel); if(p) p.classList.remove('sel'); }
   _sel = id;
   if (id) { var el=$id(id); if(el) el.classList.add('sel'); }
   if (id) { _pendingScrollBid = id; scrollPreviewToBlock(id); scrollEditorToBlock(id); _scrollCodeToBlock(id); }
+  /* Clear any preview text-selection highlights whenever the editor selection changes */
+  clearPvHighlights();
   // Sync tree selection highlight
   document.querySelectorAll('#ce-tree-pane .tn-hdr.tn-sel').forEach(function(h){ h.classList.remove('tn-sel'); });
   if (id) {
@@ -2187,6 +2328,33 @@ function clearMultiSel() {
   _multiSel.forEach(function(id) { var el = $id(id); if (el) el.classList.remove('msel'); });
   _multiSel = [];
   _multiSelAnchor = null;
+  /* Clear any preview text-selection highlights when multi-select is cleared */
+  clearPvHighlights();
+}
+
+/* Set multi-select (or single-select) from an ordered list of block IDs.
+   Used by the preview-selection sync to drive editor selection from pv. */
+function setMultiSelFromIds(ids) {
+  /* Remove duplicates while preserving document order (O(n) with Set lookup) */
+  var idSet = {};
+  ids.forEach(function(id){ idSet[id] = true; });
+  var ordered = _blocks.map(function(b) { return b.id; }).filter(function(id) { return !!idSet[id]; });
+  if (ordered.length === 0) return;
+  if (ordered.length === 1) {
+    setSelected(ordered[0]);
+    return;
+  }
+  /* Switch into multi-select mode */
+  clearMultiSel();
+  if (_sel) { var p = $id(_sel); if (p) p.classList.remove('sel'); _sel = null; }
+  ordered.forEach(function(id) {
+    _multiSel.push(id);
+    var el = $id(id); if (el) el.classList.add('msel');
+  });
+  _multiSelAnchor = ordered[0];
+  /* Scroll editor to the first block in the selection */
+  var firstEl = $id(ordered[0]);
+  if (firstEl) firstEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function toggleMultiSel(id) {
@@ -3080,7 +3248,7 @@ function scrollPreviewToBlock(bid) {
     if (!doc.getElementById('_pv_hl_style')) {
       var s = doc.createElement('style');
       s.id = '_pv_hl_style';
-      s.textContent = '@keyframes _pv_hl{0%,60%{outline:1.5px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1.5px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1.5px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
+      s.textContent = '@keyframes _pv_hl{0%,40%{outline:1.5px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1.5px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 0.6s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1.5px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
       (doc.head || doc.body).appendChild(s);
     }
     var prev = doc.querySelector('._pv_hl');
@@ -3249,6 +3417,146 @@ function confirmVideo() {
   if (_editingBlock) { Object.assign(_editingBlock.data,data); _refreshInner(_editingBlock); syncCode(); schedPv(); }
   else insertBlock('video',data);
 }
+
+/* ── Batch Media Dialog ── */
+/* Extensible dispatch table: add entries here to support new batch-editable block types.
+   Each entry: { type, title, fields }
+   fields: array of { key, label, kind:'text'|'select', options:[{v,l}] } */
+var _BATCH_DEFS = {
+  img: {
+    title: '批量编辑图片',
+    fields: [
+      { key:'src',     label:'图片 URL / 路径', kind:'text' },
+      { key:'alt',     label:'Alt 文本',        kind:'text' },
+      { key:'caption', label:'图片标题',         kind:'text' },
+      { key:'fignum',  label:'图号',             kind:'text' },
+    ]
+  },
+  video: {
+    title: '批量编辑视频',
+    fields: [
+      { key:'vtype',   label:'类型', kind:'select', options:[{v:'file',l:'本地/直链'},{v:'iframe',l:'嵌入 iframe'}] },
+      { key:'src',     label:'URL / src',  kind:'text' },
+      { key:'caption', label:'视频标题',   kind:'text' },
+      { key:'fignum',  label:'视频号',     kind:'text' },
+    ]
+  }
+  /* ── Add future batch-editable types here ── */
+};
+
+function openBatchMediaDlg(blocks, type) {
+  if (!blocks || blocks.length === 0) return;
+  var def = _BATCH_DEFS[type];
+  if (!def) return; /* type not registered for batch editing */
+  _batchMediaBlocks = blocks;
+  _batchMediaMode = 'tbl';
+  _batchType = type;
+  $id('batch-title').textContent = def.title + '（' + blocks.length + ' 个）';
+  $id('batch-tab-tbl').classList.add('on');
+  $id('batch-tab-json').classList.remove('on');
+  _renderBatchContent();
+  $id('batch-overlay').classList.add('open');
+}
+
+function _renderBatchContent() {
+  var type = _batchType;
+  var def = _BATCH_DEFS[type];
+  var content = $id('batch-content');
+  if (_batchMediaMode === 'tbl') {
+    /* Table mode */
+    var html = '<table class="batch-tbl"><thead><tr><th>#</th>';
+    def.fields.forEach(function(f){ html += '<th>'+esc(f.label)+'</th>'; });
+    html += '</tr></thead><tbody>';
+    _batchMediaBlocks.forEach(function(blk, i) {
+      html += '<tr><td>' + (i+1) + '</td>';
+      def.fields.forEach(function(f) {
+        var val = (blk.data && blk.data[f.key] !== undefined) ? blk.data[f.key] : '';
+        if (f.kind === 'select') {
+          html += '<td><select data-row="'+i+'" data-key="'+esc(f.key)+'">';
+          f.options.forEach(function(opt) {
+            html += '<option value="'+esc(opt.v)+'"'+(val===opt.v?' selected':'')+'>'+esc(opt.l)+'</option>';
+          });
+          html += '</select></td>';
+        } else {
+          html += '<td><input type="text" data-row="'+i+'" data-key="'+esc(f.key)+'" value="'+esc(val)+'" placeholder="'+esc(f.label)+'"></td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    content.innerHTML = html;
+  } else {
+    /* JSON mode */
+    var arr = _batchMediaBlocks.map(function(blk) {
+      var obj = {};
+      def.fields.forEach(function(f) {
+        obj[f.key] = (blk.data && blk.data[f.key] !== undefined) ? blk.data[f.key] : '';
+      });
+      return obj;
+    });
+    content.innerHTML = '<textarea id="batch-json" spellcheck="false">'+esc(JSON.stringify(arr, null, 2))+'</textarea>';
+  }
+}
+
+function _commitBatchMedia() {
+  var type = _batchType;
+  var def = _BATCH_DEFS[type];
+  if (!def) return;
+  if (_batchMediaMode === 'tbl') {
+    _batchMediaBlocks.forEach(function(blk, i) {
+      def.fields.forEach(function(f) {
+        var inp = $id('batch-content').querySelector('[data-row="'+i+'"][data-key="'+f.key+'"]');
+        if (inp) {
+          blk.data = blk.data || {};
+          blk.data[f.key] = inp.value.trim();
+        }
+      });
+      _refreshInner(blk);
+    });
+  } else {
+    /* JSON mode */
+    var ta = $id('batch-json');
+    if (!ta) return;
+    var arr;
+    try { arr = JSON.parse(ta.value); } catch(e) { alert('JSON 格式错误：' + e.message); return; }
+    if (!Array.isArray(arr)) { alert('JSON 必须是数组'); return; }
+    arr.forEach(function(obj, i) {
+      var blk = _batchMediaBlocks[i];
+      if (!blk) return;
+      def.fields.forEach(function(f) {
+        if (obj[f.key] !== undefined) {
+          blk.data = blk.data || {};
+          blk.data[f.key] = String(obj[f.key]).trim();
+        }
+      });
+      _refreshInner(blk);
+    });
+  }
+  syncCode(); schedPv();
+}
+
+function closeBatchDlg() { $id('batch-overlay').classList.remove('open'); _batchMediaBlocks = []; _batchType = null; }
+
+$id('batch-close').addEventListener('click', closeBatchDlg);
+$id('batch-cancel').addEventListener('click', closeBatchDlg);
+$id('batch-confirm').addEventListener('click', function() {
+  _commitBatchMedia();
+  closeBatchDlg();
+});
+$id('batch-tab-tbl').addEventListener('click', function() {
+  if (_batchMediaMode === 'tbl') return;
+  _batchMediaMode = 'tbl';
+  $id('batch-tab-tbl').classList.add('on');
+  $id('batch-tab-json').classList.remove('on');
+  _renderBatchContent();
+});
+$id('batch-tab-json').addEventListener('click', function() {
+  if (_batchMediaMode === 'json') return;
+  _batchMediaMode = 'json';
+  $id('batch-tab-json').classList.add('on');
+  $id('batch-tab-tbl').classList.remove('on');
+  _renderBatchContent();
+});
 
 /* ── Equation ── */
 var _dEqPv = debounce(function(){
@@ -4212,7 +4520,7 @@ function _openPvCtxMenu(bid, x, y) {
     if (fdoc && !fdoc.getElementById('_pv_hl_style')) {
       var s = fdoc.createElement('style');
       s.id = '_pv_hl_style';
-      s.textContent = '@keyframes _pv_hl{0%,60%{outline:1.5px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1.5px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 1.3s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1.5px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
+      s.textContent = '@keyframes _pv_hl{0%,40%{outline:1.5px solid rgba(38,68,186,.85);background-color:rgba(38,68,186,.1)}100%{outline:1.5px solid rgba(38,68,186,0);background-color:rgba(38,68,186,0)}}._pv_hl{animation:_pv_hl 0.6s ease-out forwards!important;outline-offset:2px!important;}._pv_hl_ctx{outline:1.5px solid rgba(38,68,186,.85)!important;outline-offset:2px!important;}';
       (fdoc.head || fdoc.body).appendChild(s);
     }
     var el = fdoc && fdoc.querySelector('[data-bid="' + bid + '"]');
@@ -4237,6 +4545,10 @@ function _closeAllCtxMenus() {
 }
 
 var _pvCtxMenuDoc = null;
+/* Set to true while _pvSelHandler is actively syncing from the preview selection to
+   the editor, so that clearPvHighlights() does not try to clear the native preview
+   text selection and cause a feedback loop. */
+var _updatingFromPv = false;
 function _pvCtxMenuHandler(e) {
   e.preventDefault(); // always suppress the browser native context menu inside the preview
   var frame = $id('pframe');
@@ -4257,6 +4569,13 @@ function _pvCtxMenuHandler(e) {
 function _pvClickHandler(e) {
   _closeAllCtxMenus();
   var fdoc = _pvCtxMenuDoc;
+  /* If a text selection (single- or multi-block) just happened in the preview,
+     don't override it with a click — the mouseup that ends a drag also fires a click. */
+  try {
+    var sel = fdoc && fdoc.defaultView && fdoc.defaultView.getSelection();
+    if (sel && !sel.isCollapsed) return; /* selection still active — keep it */
+  } catch(e) {}
+  _pvLastSpannedIds = {}; /* reset drag-flash tracking on each click */
   var n = e && e.target;
   while (n && fdoc && n !== fdoc.body) {
     if (n.getAttribute && n.getAttribute('data-bid')) {
@@ -4266,6 +4585,80 @@ function _pvClickHandler(e) {
     }
     n = n.parentElement;
   }
+  /* Click landed on blank area (no data-bid found) — clear editor selection and
+     also clear the preview's native browser text selection */
+  if (_multiSel.length > 0) { clearMultiSel(); } else if (_sel) { setSelected(null); }
+  /* Even if _sel and _multiSel were already empty, still clear native preview selection */
+  try {
+    var win = _pvCtxMenuDoc && _pvCtxMenuDoc.defaultView;
+    if (win && win.getSelection) { var s = win.getSelection(); if (s) s.removeAllRanges(); }
+  } catch(e2) {}
+}
+
+/* ── Preview selection → editor multi-select (real-time) ── */
+/* Triggered by selectionchange inside the preview iframe; reads the current text
+   selection and immediately drives the editor's multi-select.  A short debounce
+   (one animation frame) coalesces rapid selectionchange events during a drag. */
+var _pvSelTimer = null;
+var PV_SEL_FRAME_MS = 16; /* ~1 animation frame – coalesces rapid selectionchange bursts */
+var _pvLastSpannedIds = {}; /* track previously spanned block IDs to detect newly entered blocks */
+function _pvSelHandler() {
+  clearTimeout(_pvSelTimer);
+  _pvSelTimer = setTimeout(function() {
+    try {
+      var fdoc = _pvCtxMenuDoc;
+      if (!fdoc) return;
+      var sel = fdoc.defaultView && fdoc.defaultView.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      var range = sel.getRangeAt(0);
+      if (range.collapsed) return; /* collapsed = cursor only, not a real selection */
+
+      /* Pre-build a hash of valid block IDs for O(1) lookup */
+      var validIds = {};
+      _blocks.forEach(function(b){ validIds[b.id] = true; });
+
+      /* Walk every element in the preview that has a data-bid attribute and
+         check whether it intersects the selection range. */
+      var spannedIds = [];
+      fdoc.querySelectorAll('[data-bid]').forEach(function(el) {
+        var bid = el.getAttribute('data-bid');
+        if (!validIds[bid]) return;
+        /* Use Range.intersectsNode (standard) or a manual range comparison fallback */
+        var intersects = false;
+        if (typeof range.intersectsNode === 'function') {
+          intersects = range.intersectsNode(el);
+        } else {
+          var elRange = fdoc.createRange();
+          elRange.selectNode(el);
+          intersects = !(range.compareBoundaryPoints(Range.END_TO_START, elRange) > 0 ||
+                         range.compareBoundaryPoints(Range.START_TO_END, elRange) < 0);
+        }
+        if (intersects) spannedIds.push(bid);
+      });
+
+      if (spannedIds.length === 0) return;
+
+      /* Flash newly-entered blocks in the preview (visual only) */
+      try {
+        spannedIds.forEach(function(bid) {
+          if (_pvLastSpannedIds[bid]) return; /* already spanned before, skip */
+          var el = fdoc.querySelector('[data-bid="' + bid + '"]');
+          if (!el) return;
+          el.classList.remove('_pv_hl');
+          void el.offsetWidth; /* force reflow to restart animation */
+          el.classList.add('_pv_hl');
+        });
+      } catch(e2) {}
+      /* Build new spanned set */
+      _pvLastSpannedIds = {};
+      spannedIds.forEach(function(bid){ _pvLastSpannedIds[bid] = true; });
+
+      /* Guard: while we update editor selection, don't let clearPvHighlights()
+         wipe out the native browser selection that the user is actively making. */
+      _updatingFromPv = true;
+      try { setMultiSelFromIds(spannedIds); } finally { _updatingFromPv = false; }
+    } catch(e) {}
+  }, PV_SEL_FRAME_MS);
 }
 
 function _attachPvContextMenu() {
@@ -4277,15 +4670,20 @@ function _attachPvContextMenu() {
       try {
         _pvCtxMenuDoc.removeEventListener('contextmenu', _pvCtxMenuHandler);
         _pvCtxMenuDoc.removeEventListener('click', _pvClickHandler);
+        _pvCtxMenuDoc.removeEventListener('selectionchange', _pvSelHandler);
       } catch(e) {}
     }
     if (_pvCtxMenuDoc === fdoc) {
       fdoc.removeEventListener('contextmenu', _pvCtxMenuHandler);
       fdoc.removeEventListener('click', _pvClickHandler);
+      fdoc.removeEventListener('selectionchange', _pvSelHandler);
     }
     _pvCtxMenuDoc = fdoc;
     fdoc.addEventListener('contextmenu', _pvCtxMenuHandler);
     fdoc.addEventListener('click', _pvClickHandler);
+    /* Listen on selectionchange (fires continuously while dragging) so the editor
+       follows the preview text selection in real time. */
+    fdoc.addEventListener('selectionchange', _pvSelHandler);
   } catch(err) {}
 }
 
@@ -4293,6 +4691,26 @@ document.addEventListener('click', function(){ _closeAllCtxMenus(); });
 document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 $id('cxpv-sel').addEventListener('click', function(){ if (_pvCtxId) setSelected(_pvCtxId); });
 $id('cxpv-del').addEventListener('click', function(){ if (_pvCtxId) deleteBlock(_pvCtxId); });
+
+/* Clicking blank area in the editor block list (not on any block) clears all
+   selections, including any lingering native text selection in the preview. */
+$id('blist').addEventListener('click', function(e) {
+  /* Only act when the click target is blist itself or a direct non-block child
+     (i.e., the click did not land on a real block element). Editor-side block
+     elements carry the class 'bi'; walk up from the click target and stop if
+     we find one. */
+  var n = e.target;
+  while (n && n !== this) {
+    if (n.classList && n.classList.contains('bi')) return; /* hit a block */
+    n = n.parentElement;
+  }
+  if (_multiSel.length > 0) { clearMultiSel(); } else if (_sel) { setSelected(null); }
+  /* Also clear native preview text selection */
+  try {
+    var win = _pvCtxMenuDoc && _pvCtxMenuDoc.defaultView;
+    if (win && win.getSelection) { var s = win.getSelection(); if (s) s.removeAllRanges(); }
+  } catch(e2) {}
+});
 
 // Sync selection when the user clicks or navigates inside the code pane
 (function() {
