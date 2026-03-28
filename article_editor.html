@@ -2022,12 +2022,8 @@ function _buildInner(inner, b) {
         wrap.querySelectorAll('.abtn').forEach(function(ab){ ab.classList.remove('on'); });
         if (b.data.align) btn.classList.add('on');
         syncCode(); schedPv();
-        /* Auto-focus the editable element after changing alignment */
-        if (_multiSel.length === 0) {
-          var blockEl = $id(b.id);
-          var editEl = blockEl && (blockEl.querySelector('.rich-be') || blockEl.querySelector('.be'));
-          if (editEl) editEl.focus();
-        }
+        /* Select the block after changing alignment (don't enter edit mode) */
+        if (_multiSel.length === 0) setSelected(b.id);
       });
       wrap.appendChild(btn);
     });
