@@ -3462,14 +3462,13 @@ function _parsePasteContent(html, text) {
 
 /* Extract plain-text blocks from raw paste data */
 function _pasteAsPlainBlocks() {
-  var txt = '';
-  if (_pasteRawHtml) {
+  var txt = _pasteRawText || '';
+  if (!txt.trim() && _pasteRawHtml) {
     try {
       var doc = new DOMParser().parseFromString(_pasteRawHtml, 'text/html');
-      txt = doc.body ? (doc.body.textContent || '') : '';
+      txt = doc.body ? _domToText(doc.body) : '';
     } catch(e) {}
   }
-  if (!txt.trim()) txt = _pasteRawText;
   var src = txt.trim();
   if (!src) return [];
   return src.split('\n')
@@ -4915,10 +4914,30 @@ function editClItem(itemId) {
   openClImportDlg(itemId);
 }
 
+/* Walk a DOM node and produce plain text, inserting \n at block boundaries and <br> */
+function _domToText(node) {
+  if (!node) return '';
+  var BLOCK = /^(P|DIV|H[1-6]|LI|TR|BLOCKQUOTE|PRE|ARTICLE|SECTION|HEADER|FOOTER|NAV|ASIDE|MAIN|FIGURE|FIGCAPTION|UL|OL|TABLE|THEAD|TBODY|TFOOT)$/;
+  var out = '';
+  function walk(n) {
+    if (n.nodeType === 3) { out += n.nodeValue; return; }
+    if (n.nodeType !== 1) return;
+    var tag = n.tagName.toUpperCase();
+    if (tag === 'BR') { out += '\n'; return; }
+    if (tag === 'SCRIPT' || tag === 'STYLE') return;
+    var isBlock = BLOCK.test(tag);
+    if (isBlock && out.length && out[out.length - 1] !== '\n') out += '\n';
+    for (var i = 0; i < n.childNodes.length; i++) walk(n.childNodes[i]);
+    if (isBlock && out.length && out[out.length - 1] !== '\n') out += '\n';
+  }
+  walk(node);
+  return out;
+}
+
 /* Convert HTML string to plain-text paragraphs HTML */
 function _clImportPlainHtml(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
-  var txt = doc.body ? (doc.body.textContent || '') : html;
+  var txt = doc.body ? _domToText(doc.body) : html;
   var lines = txt.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
   return lines.length ? lines.map(function(l){ return '<p>' + esc(l) + '</p>'; }).join('\n') : '<p>' + esc(txt.trim()) + '</p>';
 }
