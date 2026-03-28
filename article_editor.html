@@ -1166,6 +1166,7 @@ var _idSeq   = 0;
 var _editingBlock = null;
 var _batchMediaBlocks = []; /* blocks being edited in batch media dialog */
 var _batchMediaMode = 'tbl'; /* 'tbl' | 'json' */
+var _batchType = null;       /* block type currently in batch dialog */
 var _syncingFromCode = false; // guard: prevent feedback loop when code drives block updates
 var _pendingScrollBid = null; // block id to scroll to in preview on next render or immediately
 var _draggingId = null; // block id being dragged for reorder
@@ -2068,7 +2069,7 @@ function _buildInner(inner, b) {
             }
           });
           /* Re-apply msel class to rebuilt elements */
-          _multiSel.forEach(function(mid) { var el=$id(mid); if(el) el.classList.add('msel'); });
+          _multiSel.forEach(function(mid) { var el = $id(mid); if(el) el.classList.add('msel'); });
         } else {
           _convertBlockTypeInPlace(b, it.t);
         }
@@ -3405,14 +3406,16 @@ function openBatchMediaDlg(blocks, type) {
   if (!def) return; /* type not registered for batch editing */
   _batchMediaBlocks = blocks;
   _batchMediaMode = 'tbl';
+  _batchType = type;
   $id('batch-title').textContent = def.title + '（' + blocks.length + ' 个）';
   $id('batch-tab-tbl').classList.add('on');
   $id('batch-tab-json').classList.remove('on');
-  _renderBatchContent(type);
+  _renderBatchContent();
   $id('batch-overlay').classList.add('open');
 }
 
-function _renderBatchContent(type) {
+function _renderBatchContent() {
+  var type = _batchType;
   var def = _BATCH_DEFS[type];
   var content = $id('batch-content');
   if (_batchMediaMode === 'tbl') {
@@ -3451,7 +3454,8 @@ function _renderBatchContent(type) {
   }
 }
 
-function _commitBatchMedia(type) {
+function _commitBatchMedia() {
+  var type = _batchType;
   var def = _BATCH_DEFS[type];
   if (!def) return;
   if (_batchMediaMode === 'tbl') {
@@ -3460,7 +3464,7 @@ function _commitBatchMedia(type) {
         var inp = $id('batch-content').querySelector('[data-row="'+i+'"][data-key="'+f.key+'"]');
         if (inp) {
           blk.data = blk.data || {};
-          blk.data[f.key] = inp.value.trim !== undefined ? inp.value.trim() : inp.value;
+          blk.data[f.key] = inp.value.trim();
         }
       });
       _refreshInner(blk);
@@ -3487,37 +3491,28 @@ function _commitBatchMedia(type) {
   syncCode(); schedPv();
 }
 
-function closeBatchDlg() { $id('batch-overlay').classList.remove('open'); _batchMediaBlocks = []; }
+function closeBatchDlg() { $id('batch-overlay').classList.remove('open'); _batchMediaBlocks = []; _batchType = null; }
 
-(function() {
-  var _batchType = null;
-  $id('batch-close').addEventListener('click', closeBatchDlg);
-  $id('batch-cancel').addEventListener('click', closeBatchDlg);
-  $id('batch-confirm').addEventListener('click', function() {
-    _commitBatchMedia(_batchType);
-    closeBatchDlg();
-  });
-  $id('batch-tab-tbl').addEventListener('click', function() {
-    if (_batchMediaMode === 'tbl') return;
-    _batchMediaMode = 'tbl';
-    $id('batch-tab-tbl').classList.add('on');
-    $id('batch-tab-json').classList.remove('on');
-    _renderBatchContent(_batchType);
-  });
-  $id('batch-tab-json').addEventListener('click', function() {
-    if (_batchMediaMode === 'json') return;
-    _batchMediaMode = 'json';
-    $id('batch-tab-json').classList.add('on');
-    $id('batch-tab-tbl').classList.remove('on');
-    _renderBatchContent(_batchType);
-  });
-  /* Intercept openBatchMediaDlg to capture type for the closure */
-  var _origOpen = openBatchMediaDlg;
-  openBatchMediaDlg = function(blocks, type) {
-    _batchType = type;
-    _origOpen(blocks, type);
-  };
-})();
+$id('batch-close').addEventListener('click', closeBatchDlg);
+$id('batch-cancel').addEventListener('click', closeBatchDlg);
+$id('batch-confirm').addEventListener('click', function() {
+  _commitBatchMedia();
+  closeBatchDlg();
+});
+$id('batch-tab-tbl').addEventListener('click', function() {
+  if (_batchMediaMode === 'tbl') return;
+  _batchMediaMode = 'tbl';
+  $id('batch-tab-tbl').classList.add('on');
+  $id('batch-tab-json').classList.remove('on');
+  _renderBatchContent();
+});
+$id('batch-tab-json').addEventListener('click', function() {
+  if (_batchMediaMode === 'json') return;
+  _batchMediaMode = 'json';
+  $id('batch-tab-json').classList.add('on');
+  $id('batch-tab-tbl').classList.remove('on');
+  _renderBatchContent();
+});
 
 /* ── Equation ── */
 var _dEqPv = debounce(function(){
