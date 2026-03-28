@@ -884,7 +884,8 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
 <div id="ctxm-cl">
   <div class="cxi" id="cxcl-insert">⊕ 插入到当前位置</div>
   <div class="cxs"></div>
-  <div class="cxi" id="cxcl-rename">✎ 重命名</div>
+  <div class="cxi" id="cxcl-edit">✎ 编辑内容</div>
+  <div class="cxi" id="cxcl-rename">✏ 重命名</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cxcl-del">✕ 从库中删除</div>
 </div>
@@ -1096,6 +1097,7 @@ var P_CTRL_B_NO_COLOR_TIP_MSG = '暂无最近颜色，请先在格式栏选择�
 var _clItems = [];       /* array of { id, label, type, block } */
 var _CL_KEY  = 'htmleditor_cl_v1';
 var _clCtxItemId = null; /* item id being right-clicked */
+var _clEditingItemId = null; /* item id currently being edited in the import dialog (null = new import) */
 var _ceMode  = 'tree';   /* current code-pane mode: 'tree' | 'html' | 'cl' */
 
 function uid() { return 'b' + (++_idSeq); }
@@ -4744,6 +4746,9 @@ function _openClCtx(e, itemId) {
 $id('cxcl-insert').addEventListener('click', function() {
   if (_clCtxItemId) insertFromLibrary(_clCtxItemId);
 });
+$id('cxcl-edit').addEventListener('click', function() {
+  if (_clCtxItemId) editClItem(_clCtxItemId);
+});
 $id('cxcl-rename').addEventListener('click', function() {
   if (_clCtxItemId) renameLibraryItem(_clCtxItemId);
 });
@@ -4754,12 +4759,42 @@ $id('cxcl-del').addEventListener('click', function() {
 /* ── Library import dialog ── */
 var _clImportPreviewTimer = null;
 
-function openClImportDlg() {
-  $id('cl-import-code').value = '';
-  $id('cl-import-name').value = '';
-  $id('cl-import-iframe').srcdoc = '';
+/* Open the import/edit dialog.
+   editItemId: if provided, pre-populate with that item's HTML & label (edit mode).
+               if null/undefined, open blank (new import mode). */
+function openClImportDlg(editItemId) {
+  _clEditingItemId = editItemId || null;
+  var dlgTitle = $id('cl-import-head').querySelector('span');
+  var confirmBtn = $id('cl-import-confirm');
+
+  if (_clEditingItemId) {
+    var item = _clItems.find(function(x){ return x.id === _clEditingItemId; });
+    if (!item) return;
+    /* Get HTML representation of the stored block */
+    var existingHtml = (item.block.type === 'raw')
+      ? (item.block.data.html || '')
+      : b2html(item.block).trim();
+    $id('cl-import-code').value = existingHtml;
+    $id('cl-import-name').value = item.label;
+    dlgTitle.textContent = '✎ 编辑组件';
+    confirmBtn.textContent = '保存修改';
+    /* Trigger initial preview */
+    _updateClImportPreview();
+  } else {
+    $id('cl-import-code').value = '';
+    $id('cl-import-name').value = '';
+    $id('cl-import-iframe').srcdoc = '';
+    dlgTitle.textContent = '📥 导入到组件库';
+    confirmBtn.textContent = '保存到组件库';
+  }
+
   $id('cl-import-overlay').classList.add('open');
   setTimeout(function(){ $id('cl-import-code').focus(); }, 50);
+}
+
+/* Open edit dialog for a specific library item */
+function editClItem(itemId) {
+  openClImportDlg(itemId);
 }
 
 function _updateClImportPreview() {
@@ -4778,6 +4813,7 @@ function _updateClImportPreview() {
 
 function closeClImportDlg() {
   clearTimeout(_clImportPreviewTimer);
+  _clEditingItemId = null;
   $id('cl-import-overlay').classList.remove('open');
 }
 
@@ -4793,14 +4829,27 @@ function confirmClImport() {
   }
   var name = $id('cl-import-name').value.trim();
   if (!name) name = '自定义组件';
-  var block = mkBlock('raw', { html: html });
-  var item = {
-    id:    _clUid(),
-    label: name,
-    type:  'raw',
-    block: block
-  };
-  _clItems.push(item);
+
+  if (_clEditingItemId) {
+    /* Edit mode: update the existing item in-place */
+    var item = _clItems.find(function(x){ return x.id === _clEditingItemId; });
+    if (item) {
+      item.label = name;
+      item.type  = 'raw';
+      item.block = mkBlock('raw', { html: html });
+    }
+  } else {
+    /* New import mode: create a new item */
+    var block = mkBlock('raw', { html: html });
+    var item = {
+      id:    _clUid(),
+      label: name,
+      type:  'raw',
+      block: block
+    };
+    _clItems.push(item);
+  }
+
   _clSave();
   closeClImportDlg();
   if (_ceMode !== 'cl') switchCeTab('cl');
