@@ -2292,12 +2292,24 @@ function _refreshInner(b) {
 /* =========================================================
    SELECTION
    ========================================================= */
+/* Remove any preview-side selection highlights (_pv_hl_ctx outlines). Called
+   whenever the editor takes ownership of the selection state. */
+function clearPvHighlights() {
+  try {
+    var fdoc = _pvCtxMenuDoc;
+    if (!fdoc) return;
+    fdoc.querySelectorAll('._pv_hl_ctx').forEach(function(el){ el.classList.remove('_pv_hl_ctx'); });
+  } catch(e) {}
+}
+
 function setSelected(id) {
   if (id && _multiSel.length > 0) clearMultiSel();
   if (_sel) { var p=$id(_sel); if(p) p.classList.remove('sel'); }
   _sel = id;
   if (id) { var el=$id(id); if(el) el.classList.add('sel'); }
   if (id) { _pendingScrollBid = id; scrollPreviewToBlock(id); scrollEditorToBlock(id); _scrollCodeToBlock(id); }
+  /* Clear any preview text-selection highlights whenever the editor selection changes */
+  clearPvHighlights();
   // Sync tree selection highlight
   document.querySelectorAll('#ce-tree-pane .tn-hdr.tn-sel').forEach(function(h){ h.classList.remove('tn-sel'); });
   if (id) {
@@ -2311,6 +2323,8 @@ function clearMultiSel() {
   _multiSel.forEach(function(id) { var el = $id(id); if (el) el.classList.remove('msel'); });
   _multiSel = [];
   _multiSelAnchor = null;
+  /* Clear any preview text-selection highlights when multi-select is cleared */
+  clearPvHighlights();
 }
 
 /* Set multi-select (or single-select) from an ordered list of block IDs.
@@ -4563,6 +4577,9 @@ function _pvClickHandler(e) {
     }
     n = n.parentElement;
   }
+  /* Click landed on blank area (no data-bid found) — clear editor selection */
+  if (_multiSel.length > 0) { clearMultiSel(); }
+  if (_sel) { setSelected(null); }
 }
 
 /* ── Preview selection → editor multi-select ── */
