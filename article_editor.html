@@ -5136,6 +5136,15 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
+  // Ctrl/Meta+A: select all blocks (when not editing text)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'a') {
+    if (!_isEditingText() && !_isModalOpen() && _blocks.length > 0) {
+      e.preventDefault();
+      setMultiSelFromIds(_blocks.map(function(b){ return b.id; }));
+    }
+    return;
+  }
+
   // All remaining shortcuts: skip when editing text, dialog open, or modifier held
   if (_isEditingText()) return;
   if (_isModalOpen()) return;
