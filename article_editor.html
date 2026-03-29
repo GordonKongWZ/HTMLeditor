@@ -332,6 +332,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:130px
 }
 #ctxm.open{display:block}
+#ctxm:not(.msel) .cx-msel-only{display:none}
+#ctxm.msel .cx-so{display:none}
 .cxi{
   padding:5px 11px;font-size:11px;color:var(--t0);border-radius:var(--r4);
   cursor:pointer;display:flex;align-items:center;gap:5px
@@ -919,11 +921,13 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
 
 <!-- Context Menu (editor area) -->
 <div id="ctxm">
-  <div class="cxi" id="cx-up">↑ 上移</div>
-  <div class="cxi" id="cx-dn">↓ 下移</div>
-  <div class="cxs"></div>
-  <div class="cxi" id="cx-copy">⧉ 复制块</div>
-  <div class="cxi" id="cx-paste">⎘ 粘贴块</div>
+  <div class="cxi cx-msel-only" id="cx-msel-info" style="opacity:.55;cursor:default;pointer-events:none"></div>
+  <div class="cxs cx-msel-only"></div>
+  <div class="cxi cx-so" id="cx-up">↑ 上移</div>
+  <div class="cxi cx-so" id="cx-dn">↓ 下移</div>
+  <div class="cxs cx-so"></div>
+  <div class="cxi cx-so" id="cx-copy">⧉ 复制块</div>
+  <div class="cxi cx-so" id="cx-paste">⎘ 粘贴块</div>
   <div class="cxi" id="cx-dup">↓ 复制到文末</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
@@ -3398,17 +3402,38 @@ function _openCtx(e, id) {
     setSelected(id);
   }
   _ctxId=id;
-  // Update paste item availability
-  $id('cx-paste').classList.toggle('disabled', !_blockClip);
-  var m=$id('ctxm'); m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('open');
+  var inMulti = _multiSel.length > 0 && _multiSel.indexOf(id) >= 0;
+  var m=$id('ctxm');
+  m.classList.toggle('msel', inMulti);
+  if (inMulti) {
+    $id('cx-msel-info').textContent = '☰ ' + _multiSel.length + ' 个块已选中';
+    $id('cx-dup').textContent = '↓ 全部复制到文末';
+    $id('cx-del').textContent = '✕ 全部删除';
+  } else {
+    $id('cx-dup').textContent = '↓ 复制到文末';
+    $id('cx-del').textContent = '✕ 删除';
+    // Update paste item availability
+    $id('cx-paste').classList.toggle('disabled', !_blockClip);
+  }
+  m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('open');
 }
 
 $id('cx-up').addEventListener('click', function(){moveBlock(_ctxId,-1);});
 $id('cx-dn').addEventListener('click', function(){moveBlock(_ctxId, 1);});
 $id('cx-copy').addEventListener('click', function(){copyBlockToClip(_ctxId);});
 $id('cx-paste').addEventListener('click', function(){pasteBlock(_ctxId);});
-$id('cx-dup').addEventListener('click', function(){duplicateBlock(_ctxId);});
-$id('cx-del').addEventListener('click', function(){deleteBlock(_ctxId);});
+$id('cx-dup').addEventListener('click', function(){
+  var ids = (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) ? _multiSel.slice() : [_ctxId];
+  ids.forEach(function(id){ duplicateBlock(id); });
+});
+$id('cx-del').addEventListener('click', function(){
+  if (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) {
+    var ids = _multiSel.slice(); clearMultiSel();
+    ids.forEach(function(id){ deleteBlock(id); });
+  } else {
+    deleteBlock(_ctxId);
+  }
+});
 
 /* =========================================================
    TREE VIEW CONTEXT MENU
