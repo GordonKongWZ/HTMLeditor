@@ -2928,19 +2928,31 @@ function duplicateBlock(id) {
 
 function copyBlockToClip(id) {
   var src=_blocks.find(function(b){ return b.id===id; }); if(!src) return;
-  _blockClip = JSON.parse(JSON.stringify(src));
+  _blockClip = [JSON.parse(JSON.stringify(src))];
+}
+
+function copyMultiSelToClip() {
+  if (!_multiSel.length) return;
+  var ordered = _blocks.filter(function(b){ return _multiSel.indexOf(b.id) >= 0; });
+  if (!ordered.length) return;
+  _blockClip = JSON.parse(JSON.stringify(ordered));
 }
 
 function pasteBlock(id) {
-  if (!_blockClip) return;
-  var copy = JSON.parse(JSON.stringify(_blockClip)); copy.id=uid();
-  var i=_blocks.findIndex(function(b){ return b.id===id; });
-  if(i < 0) { _blocks.push(copy); }
-  else { _blocks.splice(i+1,0,copy); }
-  var origEl=$id(id);
-  var newEl = _buildBlockEl(copy);
-  if(origEl&&origEl.nextSibling) origEl.parentNode.insertBefore(newEl,origEl.nextSibling);
-  else $id('blist').appendChild(newEl);
+  if (!_blockClip || !_blockClip.length) return;
+  var insertAfter = id;
+  var origEl = $id(id);
+  _blockClip.forEach(function(src) {
+    var copy = JSON.parse(JSON.stringify(src)); copy.id = uid();
+    var i = _blocks.findIndex(function(b){ return b.id === insertAfter; });
+    if (i < 0) { _blocks.push(copy); }
+    else { _blocks.splice(i + 1, 0, copy); }
+    var refEl = $id(insertAfter);
+    var newEl = _buildBlockEl(copy);
+    if (refEl && refEl.nextSibling) refEl.parentNode.insertBefore(newEl, refEl.nextSibling);
+    else $id('blist').appendChild(newEl);
+    insertAfter = copy.id;
+  });
   _updateCount(); syncCode(); schedPv();
 }
 
@@ -5119,11 +5131,11 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // Ctrl/Meta+C: copy selected block to block clipboard (when not editing text)
+  // Ctrl/Meta+C: copy selected block(s) to block clipboard (when not editing text)
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'c') {
-    if (!_isEditingText() && !_isModalOpen() && _sel) {
-      e.preventDefault();
-      copyBlockToClip(_sel);
+    if (!_isEditingText() && !_isModalOpen()) {
+      if (_multiSel.length > 0) { e.preventDefault(); copyMultiSelToClip(); }
+      else if (_sel) { e.preventDefault(); copyBlockToClip(_sel); }
     }
     return;
   }
