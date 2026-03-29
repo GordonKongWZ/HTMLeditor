@@ -338,6 +338,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 .cxi:hover{background:var(--acl);color:var(--ac)}
 .cxi.danger:hover{background:#fcebeb;color:#791f1f}
+.cxi.disabled{opacity:.4;pointer-events:none}
 .cxs{height:1px;background:var(--bl);margin:2px 0}
 
 /* Scrollbars */
@@ -921,7 +922,9 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <div class="cxi" id="cx-up">↑ 上移</div>
   <div class="cxi" id="cx-dn">↓ 下移</div>
   <div class="cxs"></div>
-  <div class="cxi" id="cx-dup">⧉ 复制块</div>
+  <div class="cxi" id="cx-copy">⧉ 复制块</div>
+  <div class="cxi" id="cx-paste">⎘ 粘贴块</div>
+  <div class="cxi" id="cx-dup">↓ 复制到文末</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
 </div>
@@ -1149,6 +1152,7 @@ var _blocks  = [];
 var _sel     = null;
 var _multiSel = [];          /* array of block IDs in multi-selection */
 var _multiSelAnchor = null;  /* anchor block ID for shift-range select */
+var _blockClip = null;       /* clipboard for block copy/paste */
 var _frMatches = [];         /* [{bid, nth}] one entry per match occurrence */
 var _frCursor  = -1;         /* index into _frMatches, current match */
 var _frMarkEls = [];         /* <mark> elements injected into editor DOM for current search */
@@ -2912,8 +2916,23 @@ function deleteBlock(id) {
 function duplicateBlock(id) {
   var src=_blocks.find(function(b){ return b.id===id; }); if(!src) return;
   var copy = JSON.parse(JSON.stringify(src)); copy.id=uid();
+  _blocks.push(copy);
+  var newEl = _buildBlockEl(copy);
+  $id('blist').appendChild(newEl);
+  _updateCount(); syncCode(); schedPv();
+}
+
+function copyBlockToClip(id) {
+  var src=_blocks.find(function(b){ return b.id===id; }); if(!src) return;
+  _blockClip = JSON.parse(JSON.stringify(src));
+}
+
+function pasteBlock(id) {
+  if (!_blockClip) return;
+  var copy = JSON.parse(JSON.stringify(_blockClip)); copy.id=uid();
   var i=_blocks.findIndex(function(b){ return b.id===id; });
-  _blocks.splice(i+1,0,copy);
+  if(i < 0) { _blocks.push(copy); }
+  else { _blocks.splice(i+1,0,copy); }
   var origEl=$id(id);
   var newEl = _buildBlockEl(copy);
   if(origEl&&origEl.nextSibling) origEl.parentNode.insertBefore(newEl,origEl.nextSibling);
@@ -3372,12 +3391,22 @@ function applyScale(){
    CONTEXT MENU
    ========================================================= */
 function _openCtx(e, id) {
+  // Select the right-clicked block (exit multi-select if clicking outside selection)
+  if (_multiSel.length > 0) {
+    if (_multiSel.indexOf(id) < 0) { clearMultiSel(); setSelected(id); }
+  } else {
+    setSelected(id);
+  }
   _ctxId=id;
+  // Update paste item availability
+  $id('cx-paste').classList.toggle('disabled', !_blockClip);
   var m=$id('ctxm'); m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('open');
 }
 
 $id('cx-up').addEventListener('click', function(){moveBlock(_ctxId,-1);});
 $id('cx-dn').addEventListener('click', function(){moveBlock(_ctxId, 1);});
+$id('cx-copy').addEventListener('click', function(){copyBlockToClip(_ctxId);});
+$id('cx-paste').addEventListener('click', function(){pasteBlock(_ctxId);});
 $id('cx-dup').addEventListener('click', function(){duplicateBlock(_ctxId);});
 $id('cx-del').addEventListener('click', function(){deleteBlock(_ctxId);});
 
