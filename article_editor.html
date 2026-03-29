@@ -926,7 +926,7 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <div class="cxi cx-so" id="cx-up">↑ 上移</div>
   <div class="cxi cx-so" id="cx-dn">↓ 下移</div>
   <div class="cxs cx-so"></div>
-  <div class="cxi cx-so" id="cx-copy">⧉ 复制块</div>
+  <div class="cxi" id="cx-copy">⧉ 复制块</div>
   <div class="cxi cx-so" id="cx-paste">⎘ 粘贴块</div>
   <div class="cxi" id="cx-dup">↓ 复制到文末</div>
   <div class="cxs"></div>
@@ -3420,9 +3420,11 @@ function _openCtx(e, id) {
   if (inMulti) {
     $id('cx-msel-info').textContent = '☰ ' + _multiSel.length + ' 个块已选中';
     $id('cx-dup').textContent = '↓ 全部复制到文末';
+    $id('cx-copy').textContent = '⧉ 复制选中块';
     $id('cx-del').textContent = '✕ 全部删除';
   } else {
     $id('cx-dup').textContent = '↓ 复制到文末';
+    $id('cx-copy').textContent = '⧉ 复制块';
     $id('cx-del').textContent = '✕ 删除';
     // Update paste item availability
     $id('cx-paste').classList.toggle('disabled', !_blockClip);
@@ -3432,7 +3434,10 @@ function _openCtx(e, id) {
 
 $id('cx-up').addEventListener('click', function(){moveBlock(_ctxId,-1);});
 $id('cx-dn').addEventListener('click', function(){moveBlock(_ctxId, 1);});
-$id('cx-copy').addEventListener('click', function(){copyBlockToClip(_ctxId);});
+$id('cx-copy').addEventListener('click', function(){
+  if (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) { copyMultiSelToClip(); }
+  else { copyBlockToClip(_ctxId); }
+});
 $id('cx-paste').addEventListener('click', function(){pasteBlock(_ctxId);});
 $id('cx-dup').addEventListener('click', function(){
   var ids = (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) ? _multiSel.slice() : [_ctxId];
