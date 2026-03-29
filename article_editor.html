@@ -4841,7 +4841,9 @@ var SC_DEFS = [
   { id:'blk-up',    label:'上移选中块',         cat:'block',  def:'↑',      fixed:true },
   { id:'blk-dn',    label:'下移选中块',         cat:'block',  def:'↓',      fixed:true },
   { id:'blk-del',   label:'删除选中块',         cat:'block',  def:'Delete', fixed:true },
-  { id:'blk-dup',   label:'复制选中块',         cat:'block',  def:'Ctrl+D', fixed:true },
+  { id:'blk-dup',   label:'复制选中块到文末',   cat:'block',  def:'Ctrl+D', fixed:true },
+  { id:'blk-copy',  label:'复制块到剪切板',     cat:'block',  def:'Ctrl+C', fixed:true },
+  { id:'blk-paste', label:'粘贴块',             cat:'block',  def:'Ctrl+V', fixed:true },
   { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape', fixed:true },
   { id:'fmt-b',     label:'粗体',               cat:'rich',   def:'Ctrl+B', fixed:true },
   { id:'fmt-i',     label:'斜体',               cat:'rich',   def:'Ctrl+I', fixed:true },
@@ -5046,6 +5048,12 @@ function _isModalOpen() {
 document.addEventListener('paste', function(e) {
   if (_isEditingText()) return; // let native paste handle text fields
   if (_isModalOpen()) return;   // dialog is open, don't intercept
+  // If block clipboard has a block, paste it after selected block
+  if (_blockClip) {
+    e.preventDefault();
+    pasteBlock(_sel || (_blocks.length ? _blocks[_blocks.length - 1].id : null));
+    return;
+  }
   e.preventDefault();
   var html = e.clipboardData ? e.clipboardData.getData('text/html') : '';
   var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
@@ -5077,11 +5085,20 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // Ctrl/Meta+D: duplicate selected block
+  // Ctrl/Meta+D: duplicate selected block (append to end)
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd') {
     if (!_isEditingText() && !_isModalOpen() && _sel) {
       e.preventDefault();
       duplicateBlock(_sel);
+    }
+    return;
+  }
+
+  // Ctrl/Meta+C: copy selected block to block clipboard (when not editing text)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'c') {
+    if (!_isEditingText() && !_isModalOpen() && _sel) {
+      e.preventDefault();
+      copyBlockToClip(_sel);
     }
     return;
   }
