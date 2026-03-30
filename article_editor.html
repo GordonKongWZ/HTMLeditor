@@ -4055,6 +4055,12 @@ function _hasHtmlMarkup(htmlStr) {
 
 /* Parse pasted clipboard data (html + plain text) to blocks */
 function _parsePasteContent(html, text) {
+  /* If plain text contains $$, try formula-aware parse first */
+  var src = (text || '').trim();
+  if (src && /\$\$/.test(src)) {
+    var eqBlocks = _parsePlainTextToBlocks(src);
+    if (eqBlocks.some(function(b){ return b.type === 'eq'; })) return eqBlocks;
+  }
   if (html && html.trim() && _hasHtmlMarkup(html)) {
     /* Try article format first */
     var artBlocks = parseHtmlToBlocks(html);
@@ -4065,7 +4071,6 @@ function _parsePasteContent(html, text) {
     if (genBlocks.length) return genBlocks;
   }
   /* Plain text: parse $$...$$ as eq blocks, rest as p blocks */
-  var src = (text || '').trim();
   if (!src) return [];
   return _parsePlainTextToBlocks(src);
 }
