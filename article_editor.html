@@ -5790,11 +5790,10 @@ window.addEventListener('load', function(){
 
 /* ── Scroll nav split button ── */
 $id('scroll-top-btn').addEventListener('click', function(){
-  $id('pouter').scrollTo({top:0, behavior:'smooth'});
+  var win=$id('pframe').contentWindow; if(win) win.scrollTo({top:0, behavior:'smooth'});
 });
 $id('scroll-bot-btn').addEventListener('click', function(){
-  var ed=$id('pouter');
-  ed.scrollTo({top:ed.scrollHeight, behavior:'smooth'});
+  var win=$id('pframe').contentWindow; if(win) win.scrollTo({top:win.document.body.scrollHeight, behavior:'smooth'});
 });
 </script>
 </body>
