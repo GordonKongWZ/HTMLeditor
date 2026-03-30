@@ -499,8 +499,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* ── Preview responsive full-height ── */
 #pouter.pv-resp{flex-direction:column;align-items:stretch;padding:0;overflow:hidden}
-#pouter.pv-resp #pfwrap{flex:1;width:100% !important;height:auto;min-height:0;transform:none !important;margin-bottom:0 !important}
-#pouter.pv-resp #pframe{height:100%;min-height:0;border-radius:0;border-left:none;border-right:none;box-shadow:none}
+#pouter.pv-resp #pfwrap{flex:1;width:100% !important;height:0;min-height:0;transform:none !important;margin-bottom:0 !important;display:flex;flex-direction:column}
+#pouter.pv-resp #pframe{flex:1;height:0;min-height:0;border-radius:0;border-left:none;border-right:none;box-shadow:none}
 
 /* ── Text block control row (align left + convert right) ── */
 .align-row{display:flex;align-items:center;gap:8px;margin-top:5px;padding-top:4px;border-top:.5px solid var(--bl)}
