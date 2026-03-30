@@ -5347,6 +5347,8 @@ document.addEventListener('keydown', function(e) {
         if (hitSelBlock || hitBody) { e.preventDefault(); insertBlock('p'); }
       }
       return;
+    case 'Home': { e.preventDefault(); var _hw=$id('pframe').contentWindow; if(_hw) _hw.scrollTo({top:0,behavior:'smooth'}); return; }
+    case 'End':  { e.preventDefault(); var _ew=$id('pframe').contentWindow; if(_ew) _ew.scrollTo({top:_ew.document.body.scrollHeight,behavior:'smooth'}); return; }
     case 'ArrowUp':   if (_sel) { e.preventDefault(); moveBlock(_sel, -1); } return;
     case 'ArrowDown': if (_sel) { e.preventDefault(); moveBlock(_sel,  1); } return;
     case 'Delete':
