@@ -117,6 +117,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   background:transparent;color:var(--acm);cursor:pointer;padding:0;transition:all .1s
 }
 .bt-save-btn:hover{background:var(--ac);border-color:var(--acd);color:#fff}
+.bi.msel .bt-save-btn{display:none}
 
 /* Block inner */
 .binn{padding:6px 8px}
@@ -181,6 +182,18 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .cbx{background:var(--bg1);border:.5px solid var(--bm);border-radius:var(--r8);overflow:hidden}
 .cbxh{display:flex;align-items:center;justify-content:space-between;padding:3px 9px;background:var(--bg2);border-bottom:.5px solid var(--bm);font-size:10px;color:var(--t2)}
 .cbx .be{font-family:var(--fm);font-size:11px;background:var(--bg1);padding:7px 9px;line-height:1.6}
+/* Raw block inline textarea */
+.raw-ta{width:100%;box-sizing:border-box;background:var(--bg1);color:var(--t1);border:none;outline:none;
+  font-family:var(--fm);font-size:10px;line-height:1.5;padding:6px 9px;resize:none;
+  min-height:60px;max-height:80px;overflow:auto;white-space:pre;cursor:default;display:block;tab-size:2}
+.raw-ta.editing{font-size:13px;min-height:160px;max-height:400px;cursor:text;
+  background:var(--bg1);color:var(--t0);border-top:1px solid var(--bl)}
+.raw-ta-btns{display:none;gap:5px;padding:4px 8px 6px;background:var(--bg2);border-top:.5px solid var(--bm)}
+.raw-ta-btns.vis{display:flex}
+.raw-ta-apply{padding:2px 10px;border:none;border-radius:var(--r4);background:var(--ac);color:#fff;font-size:11px;font-family:var(--fs);cursor:pointer}
+.raw-ta-apply:hover{background:var(--acd)}
+.raw-ta-cancel{padding:2px 9px;border:1px solid var(--bm);border-radius:var(--r4);background:transparent;color:var(--t1);font-size:11px;font-family:var(--fs);cursor:pointer}
+.raw-ta-cancel:hover{border-color:var(--acm);color:var(--t0)}
 
 /* Resize handle */
 #rhandle{
@@ -929,6 +942,9 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <div class="cxi" id="cx-copy">⧉ 复制块</div>
   <div class="cxi cx-so" id="cx-paste">⎘ 粘贴块</div>
   <div class="cxi" id="cx-dup">↓ 复制到文末</div>
+  <div class="cxs"></div>
+  <div class="cxi cx-so" id="cx-save-lib">+ 存入组件库</div>
+  <div class="cxi cx-msel-only" id="cx-combine-lib">⊕ 组合为自定义组件</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
 </div>
@@ -2281,12 +2297,80 @@ function _buildInner(inner, b) {
     case 'raw': {
       var rawWrap = mkDiv('cbx'); inner.appendChild(rawWrap);
       var rawHd = mkDiv('cbxh');
-      rawHd.innerHTML = '<span style="color:var(--ac);font-size:10px">自定义 HTML</span>';
+      var rawHdLabel = document.createElement('span');
+      rawHdLabel.style.cssText = 'color:var(--ac);font-size:10px';
+      rawHdLabel.textContent = '自定义 HTML';
+      var rawHdHint = document.createElement('span');
+      rawHdHint.style.cssText = 'font-size:9px;color:var(--t2);opacity:.7';
+      rawHdHint.textContent = '双击编辑';
+      rawHd.appendChild(rawHdLabel);
+      rawHd.appendChild(rawHdHint);
       rawWrap.appendChild(rawHd);
-      var rawPre = mkDiv('be');
-      rawPre.style.cssText = 'font-family:var(--fm);font-size:10px;padding:6px 9px;overflow:auto;white-space:pre;max-height:80px;color:var(--t1);line-height:1.5';
-      rawPre.textContent = (b.data.html || '<div></div>').substring(0, 300);
-      rawWrap.appendChild(rawPre);
+
+      var rawTa = document.createElement('textarea');
+      rawTa.className = 'raw-ta';
+      rawTa.readOnly = true;
+      rawTa.spellcheck = false;
+      rawTa.value = (b.data.html || '<div></div>');
+      rawWrap.appendChild(rawTa);
+
+      var rawBtns = mkDiv('raw-ta-btns');
+      var rawApply = document.createElement('button');
+      rawApply.className = 'raw-ta-apply';
+      rawApply.textContent = '✓ 应用';
+      var rawCancel = document.createElement('button');
+      rawCancel.className = 'raw-ta-cancel';
+      rawCancel.textContent = '取消';
+      rawBtns.appendChild(rawApply);
+      rawBtns.appendChild(rawCancel);
+      rawWrap.appendChild(rawBtns);
+
+      var _origRaw = b.data.html || '<div></div>';
+
+      function _enterRawEdit() {
+        _origRaw = b.data.html || '<div></div>';
+        rawTa.value = _formatHtml(_origRaw);
+        rawTa.readOnly = false;
+        rawTa.classList.add('editing');
+        rawTa.style.maxHeight = '';
+        rawBtns.classList.add('vis');
+        rawHdHint.textContent = '';
+        rawTa.focus();
+      }
+      function _exitRawEdit(apply) {
+        if (apply) {
+          var newHtml = rawTa.value.trim();
+          b.data.html = newHtml;
+          rawTa.value = newHtml;
+          syncCode(); schedPv();
+        } else {
+          rawTa.value = _origRaw;
+        }
+        rawTa.readOnly = true;
+        rawTa.classList.remove('editing');
+        rawTa.style.maxHeight = '';
+        rawBtns.classList.remove('vis');
+        rawHdHint.textContent = '双击编辑';
+      }
+
+      rawTa.addEventListener('dblclick', function(e) {
+        if (rawTa.readOnly) { e.stopPropagation(); _enterRawEdit(); }
+      });
+      rawApply.addEventListener('click', function(e) { e.stopPropagation(); _exitRawEdit(true); });
+      rawCancel.addEventListener('click', function(e) { e.stopPropagation(); _exitRawEdit(false); });
+      rawTa.addEventListener('keydown', function(e) {
+        if (!rawTa.readOnly) {
+          e.stopPropagation();
+          if (e.key === 'Escape') {
+            _exitRawEdit(false);
+          } else if (e.key === 'Tab') {
+            e.preventDefault();
+            var s = rawTa.selectionStart, en = rawTa.selectionEnd;
+            rawTa.value = rawTa.value.substring(0, s) + '  ' + rawTa.value.substring(en);
+            rawTa.selectionStart = rawTa.selectionEnd = s + 2;
+          }
+        }
+      });
       break;
     }
     default: {
@@ -3061,7 +3145,7 @@ function b2html(b) {
       return '  <div class="cbw"'+bid+'>\n    <div class="ch"><span class="cl">'+(b.data.lang||'code')+'</span></div>\n    <pre><code>'+b.content+'</code></pre>\n  </div>';
     case 'refs': {
       var items=b.content.split('\n').filter(function(s){return s.trim();}).map(function(s){return'      <li>'+s.trim()+'</li>';}).join('\n');
-      return '  <div class="refs"'+bid+'>\n    <h2>参考文献</h2>\n    <ol>\n'+items+'\n    </ol>\n  </div>';
+      return '  <div class="refs"'+bid+'>\n    <h2>'+esc(b.label || DEFS.refs.label)+'</h2>\n    <ol>\n'+items+'\n    </ol>\n  </div>';
     }
     case 'divider':
       return '  <hr'+bid+' style="border:none;border-top:0.5px solid var(--color-border-tertiary);margin:2rem 0;">';
@@ -3086,7 +3170,7 @@ function buildCopyHTML(opts) {
     html = html.replace(/(\.ar\{[^}]*?)padding:[^;]+;/, '$1padding:0;');
   }
   if (opts.noJs) {
-    html = html.replace(/<script\b[\s\S]*?<\/script>\s*/g, '');
+    html = html.replace(/<script\b[\s\S]*?<\\?\/script>\s*/g, '');
   }
   if (opts.noTopGap) {
     html = html.replace(/<h1\b[^>]*>[\s\S]*?<\/h1>\s*/g, '');
@@ -3238,7 +3322,10 @@ function parseHtmlToBlocks(htmlStr) {
       }
       if (el.classList.contains('refs')) {
         var refItems = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
-        blocks.push(mkBlock('refs', { content: refItems.join('\n') }));
+        var refsBlk = mkBlock('refs', { content: refItems.join('\n') });
+        var refsH2 = el.querySelector('h2');
+        if (refsH2 && refsH2.textContent.trim()) refsBlk.label = refsH2.textContent.trim();
+        blocks.push(refsBlk);
         i++; continue;
       }
     }
@@ -3450,6 +3537,13 @@ $id('cx-del').addEventListener('click', function(){
   } else {
     deleteBlock(_ctxId);
   }
+});
+$id('cx-save-lib').addEventListener('click', function(){
+  var b = _blocks.find(function(x){ return x.id === _ctxId; });
+  if (b) addToLibrary(b);
+});
+$id('cx-combine-lib').addEventListener('click', function(){
+  if (_multiSel.length > 0) addMultiToLibrary(_multiSel.slice());
 });
 
 /* =========================================================
@@ -3799,6 +3893,33 @@ function _sanitizeHtml(html) {
     });
   });
   return doc.body.innerHTML;
+}
+
+/* Basic HTML pretty-printer: indent nested tags, one element per line */
+function _formatHtml(html) {
+  if (!html) return '';
+  var indent = 0;
+  var INDENT = '  ';
+  var VOID = /^<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b/i;
+  var lines = [];
+  // Tokenise into tags and text
+  var tokens = html.match(/<!--[\s\S]*?-->|<\/?[a-zA-Z][^>]*\/?>|[^<]+/g) || [];
+  tokens.forEach(function(tok) {
+    var t = tok.trim();
+    if (!t) return;
+    if (/^<!--/.test(t)) {
+      lines.push(INDENT.repeat(indent) + t);
+    } else if (/^<\//.test(t)) {
+      indent = Math.max(0, indent - 1);
+      lines.push(INDENT.repeat(indent) + t);
+    } else if (/^</.test(t)) {
+      lines.push(INDENT.repeat(indent) + t);
+      if (!VOID.test(t) && !/\/>$/.test(t)) indent++;
+    } else {
+      lines.push(INDENT.repeat(indent) + t);
+    }
+  });
+  return lines.join('\n');
 }
 
 /* Parse arbitrary HTML body into blocks */
@@ -4883,10 +5004,12 @@ var SC_DEFS = [
   { id:'blk-up',    label:'上移选中块',         cat:'block',  def:'↑',      fixed:true },
   { id:'blk-dn',    label:'下移选中块',         cat:'block',  def:'↓',      fixed:true },
   { id:'blk-del',   label:'删除选中块',         cat:'block',  def:'Delete', fixed:true },
-  { id:'blk-dup',   label:'复制选中块到文末',   cat:'block',  def:'Ctrl+D', fixed:true },
-  { id:'blk-copy',  label:'复制块到剪切板',     cat:'block',  def:'Ctrl+C', fixed:true },
-  { id:'blk-paste', label:'粘贴块',             cat:'block',  def:'Ctrl+V', fixed:true },
-  { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape', fixed:true },
+  { id:'blk-dup',   label:'复制选中块到文末',   cat:'block',  def:'Ctrl+D',       fixed:true },
+  { id:'blk-copy',  label:'复制块到剪切板',     cat:'block',  def:'Ctrl+C',       fixed:true },
+  { id:'blk-paste', label:'粘贴块',             cat:'block',  def:'Ctrl+V',       fixed:true },
+  { id:'blk-sel-all',label:'全选所有块',        cat:'block',  def:'Ctrl+A',       fixed:true },
+  { id:'blk-sel-type',label:'选中同类型所有块', cat:'block',  def:'Ctrl+Shift+A', fixed:true },
+  { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape',       fixed:true },
   { id:'fmt-b',     label:'粗体',               cat:'rich',   def:'Ctrl+B', fixed:true },
   { id:'fmt-i',     label:'斜体',               cat:'rich',   def:'Ctrl+I', fixed:true },
   { id:'fmt-u',     label:'下划线',             cat:'rich',   def:'Ctrl+U', fixed:true },
@@ -5154,10 +5277,29 @@ document.addEventListener('keydown', function(e) {
   }
 
   // Ctrl/Meta+A: select all blocks (when not editing text)
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'a') {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
     if (!_isEditingText() && !_isModalOpen() && _blocks.length > 0) {
       e.preventDefault();
       setMultiSelFromIds(_blocks.map(function(b){ return b.id; }));
+    }
+    return;
+  }
+
+  // Ctrl/Meta+Shift+A: select all blocks of the same type as the current block
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+    if (!_isEditingText() && !_isModalOpen()) {
+      var sameTypeRef = null;
+      if (_sel) {
+        var selBlk = _blocks.find(function(b){ return b.id === _sel; });
+        if (selBlk) sameTypeRef = selBlk.type;
+      } else if (_multiSel.length > 0) {
+        var anchorBlk = _blocks.find(function(b){ return b.id === _multiSel[0]; });
+        if (anchorBlk) sameTypeRef = anchorBlk.type;
+      }
+      if (sameTypeRef) {
+        e.preventDefault();
+        setMultiSelFromIds(_blocks.filter(function(b){ return b.type === sameTypeRef; }).map(function(b){ return b.id; }));
+      }
     }
     return;
   }
@@ -5263,6 +5405,26 @@ function addToLibrary(b) {
   _clItems.push(item);
   _clSave();
   /* Open the library pane so user sees the new item */
+  if (_ceMode !== 'cl') switchCeTab('cl');
+  else renderClLib();
+}
+
+function addMultiToLibrary(ids) {
+  var orderedBlocks = _blocks.filter(function(b){ return ids.indexOf(b.id) >= 0; });
+  if (!orderedBlocks.length) return;
+  var combinedHtml = orderedBlocks.map(b2html).join('\n');
+  var name = prompt('请输入组件名称：', '组合组件 (' + orderedBlocks.length + ' 个块)');
+  if (name === null) return; // cancelled
+  if (!name.trim()) name = '组合组件';
+  var rawBlock = mkBlock('raw', { html: combinedHtml });
+  var item = {
+    id:    _clUid(),
+    label: name.trim(),
+    type:  'raw',
+    block: rawBlock
+  };
+  _clItems.push(item);
+  _clSave();
   if (_ceMode !== 'cl') switchCeTab('cl');
   else renderClLib();
 }
