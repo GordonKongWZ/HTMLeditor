@@ -58,8 +58,23 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 .tbtn2 svg{width:13px;height:13px;flex-shrink:0}
 
 /* ── Block editor ── */
-#beditor{flex:1;overflow-y:auto;padding:12px 12px 12px 38px;background:#fff;min-height:0}
+#beditor{flex:1;overflow-y:auto;padding:12px 12px 12px 38px;background:#fff;min-height:0;position:relative}
 #blist{display:flex;flex-direction:column;gap:3px;min-height:100%}
+
+/* ── Scroll nav split button ── */
+#scroll-nav{
+  position:absolute;bottom:12px;right:12px;
+  display:none;flex-direction:row;border-radius:var(--r4);
+  overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:50
+}
+#scroll-nav.vis{display:flex}
+#scroll-nav button{
+  width:30px;height:28px;border:none;background:#fff;color:#555;
+  cursor:pointer;font-size:13px;line-height:1;transition:background .12s;
+  display:flex;align-items:center;justify-content:center
+}
+#scroll-nav button:first-child{border-right:1px solid rgba(0,0,0,.08)}
+#scroll-nav button:hover{background:#f0f0f0}
 
 /* Empty hint */
 #ehint{
@@ -247,7 +262,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* Preview outer */
 #pouter{
-  flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:16px;
+  flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:16px;position:relative;
   background:
     repeating-linear-gradient(0deg,transparent,transparent 19px,rgba(0,0,0,.04) 20px),
     repeating-linear-gradient(90deg,transparent,transparent 19px,rgba(0,0,0,.04) 20px),
@@ -484,8 +499,8 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* ── Preview responsive full-height ── */
 #pouter.pv-resp{flex-direction:column;align-items:stretch;padding:0;overflow:hidden}
-#pouter.pv-resp #pfwrap{flex:1;width:100% !important;height:auto;min-height:0;transform:none !important;margin-bottom:0 !important}
-#pouter.pv-resp #pframe{height:100%;min-height:0;border-radius:0;border-left:none;border-right:none;box-shadow:none}
+#pouter.pv-resp #pfwrap{flex:1;width:100% !important;height:0;min-height:0;transform:none !important;margin-bottom:0 !important;display:flex;flex-direction:column}
+#pouter.pv-resp #pframe{flex:1;height:0;min-height:0;border-radius:0;border-left:none;border-right:none;box-shadow:none}
 
 /* ── Text block control row (align left + convert right) ── */
 .align-row{display:flex;align-items:center;gap:8px;margin-top:5px;padding-top:4px;border-top:.5px solid var(--bl)}
@@ -914,6 +929,14 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
     </select>
   </div>
   <div id="pouter" class="pv-resp">
+    <div id="scroll-nav">
+      <button id="scroll-top-btn" title="回到顶部">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+      <button id="scroll-bot-btn" title="跳到底部">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
     <div id="pfwrap"><iframe id="pframe" scrolling="yes"></iframe></div>
   </div>
 </div>
@@ -3042,11 +3065,15 @@ function pasteBlock(id) {
 
 function _updateCount() {
   $id('bcount').textContent = _blocks.length + ' 个块';
+  var nav = $id('scroll-nav');
   if (_blocks.length===0) {
     var bl=$id('blist'); bl.innerHTML='';
     var h=document.createElement('div'); h.id='ehint';
     h.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:28px;height:28px;opacity:.35"><path d="M12 5v14M5 12h14"/></svg><div>使用上方工具栏插入组件块</div><div style="font-size:10px;opacity:.6">每个组件独立生成代码片段</div>';
     bl.appendChild(h);
+    nav.classList.remove('vis');
+  } else {
+    nav.classList.add('vis');
   }
 }
 
@@ -5320,6 +5347,8 @@ document.addEventListener('keydown', function(e) {
         if (hitSelBlock || hitBody) { e.preventDefault(); insertBlock('p'); }
       }
       return;
+    case 'Home': { e.preventDefault(); var _hw=$id('pframe').contentWindow; if(_hw) _hw.scrollTo({top:0,behavior:'smooth'}); return; }
+    case 'End':  { e.preventDefault(); var _ew=$id('pframe').contentWindow; if(_ew) _ew.scrollTo({top:_ew.document.body.scrollHeight,behavior:'smooth'}); return; }
     case 'ArrowUp':   if (_sel) { e.preventDefault(); moveBlock(_sel, -1); } return;
     case 'ArrowDown': if (_sel) { e.preventDefault(); moveBlock(_sel,  1); } return;
     case 'Delete':
@@ -5759,6 +5788,14 @@ $id('cl-import-btn').addEventListener('click',  function(){ openClImportDlg(); }
 window.addEventListener('load', function(){
   schedPv();
   _clLoad(); // load persisted custom library
+});
+
+/* ── Scroll nav split button ── */
+$id('scroll-top-btn').addEventListener('click', function(){
+  var win=$id('pframe').contentWindow; if(win) win.scrollTo({top:0, behavior:'smooth'});
+});
+$id('scroll-bot-btn').addEventListener('click', function(){
+  var win=$id('pframe').contentWindow; if(win) win.scrollTo({top:win.document.body.scrollHeight, behavior:'smooth'});
 });
 </script>
 </body>
