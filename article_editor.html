@@ -3061,7 +3061,7 @@ function b2html(b) {
       return '  <div class="cbw"'+bid+'>\n    <div class="ch"><span class="cl">'+(b.data.lang||'code')+'</span></div>\n    <pre><code>'+b.content+'</code></pre>\n  </div>';
     case 'refs': {
       var items=b.content.split('\n').filter(function(s){return s.trim();}).map(function(s){return'      <li>'+s.trim()+'</li>';}).join('\n');
-      return '  <div class="refs"'+bid+'>\n    <h2>参考文献</h2>\n    <ol>\n'+items+'\n    </ol>\n  </div>';
+      return '  <div class="refs"'+bid+'>\n    <h2>'+esc(b.label || DEFS.refs.label)+'</h2>\n    <ol>\n'+items+'\n    </ol>\n  </div>';
     }
     case 'divider':
       return '  <hr'+bid+' style="border:none;border-top:0.5px solid var(--color-border-tertiary);margin:2rem 0;">';
@@ -3086,7 +3086,7 @@ function buildCopyHTML(opts) {
     html = html.replace(/(\.ar\{[^}]*?)padding:[^;]+;/, '$1padding:0;');
   }
   if (opts.noJs) {
-    html = html.replace(/<script\b[\s\S]*?<\/script>\s*/g, '');
+    html = html.replace(/<script\b[\s\S]*?<\\?\/script>\s*/g, '');
   }
   if (opts.noTopGap) {
     html = html.replace(/<h1\b[^>]*>[\s\S]*?<\/h1>\s*/g, '');
@@ -3238,7 +3238,10 @@ function parseHtmlToBlocks(htmlStr) {
       }
       if (el.classList.contains('refs')) {
         var refItems = Array.prototype.slice.call(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
-        blocks.push(mkBlock('refs', { content: refItems.join('\n') }));
+        var refsBlk = mkBlock('refs', { content: refItems.join('\n') });
+        var refsH2 = el.querySelector('h2');
+        if (refsH2 && refsH2.textContent.trim()) refsBlk.label = refsH2.textContent.trim();
+        blocks.push(refsBlk);
         i++; continue;
       }
     }
@@ -4883,10 +4886,12 @@ var SC_DEFS = [
   { id:'blk-up',    label:'上移选中块',         cat:'block',  def:'↑',      fixed:true },
   { id:'blk-dn',    label:'下移选中块',         cat:'block',  def:'↓',      fixed:true },
   { id:'blk-del',   label:'删除选中块',         cat:'block',  def:'Delete', fixed:true },
-  { id:'blk-dup',   label:'复制选中块到文末',   cat:'block',  def:'Ctrl+D', fixed:true },
-  { id:'blk-copy',  label:'复制块到剪切板',     cat:'block',  def:'Ctrl+C', fixed:true },
-  { id:'blk-paste', label:'粘贴块',             cat:'block',  def:'Ctrl+V', fixed:true },
-  { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape', fixed:true },
+  { id:'blk-dup',   label:'复制选中块到文末',   cat:'block',  def:'Ctrl+D',       fixed:true },
+  { id:'blk-copy',  label:'复制块到剪切板',     cat:'block',  def:'Ctrl+C',       fixed:true },
+  { id:'blk-paste', label:'粘贴块',             cat:'block',  def:'Ctrl+V',       fixed:true },
+  { id:'blk-sel-all',label:'全选所有块',        cat:'block',  def:'Ctrl+A',       fixed:true },
+  { id:'blk-sel-type',label:'选中同类型所有块', cat:'block',  def:'Ctrl+Shift+A', fixed:true },
+  { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape',       fixed:true },
   { id:'fmt-b',     label:'粗体',               cat:'rich',   def:'Ctrl+B', fixed:true },
   { id:'fmt-i',     label:'斜体',               cat:'rich',   def:'Ctrl+I', fixed:true },
   { id:'fmt-u',     label:'下划线',             cat:'rich',   def:'Ctrl+U', fixed:true },
@@ -5154,10 +5159,29 @@ document.addEventListener('keydown', function(e) {
   }
 
   // Ctrl/Meta+A: select all blocks (when not editing text)
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'a') {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
     if (!_isEditingText() && !_isModalOpen() && _blocks.length > 0) {
       e.preventDefault();
       setMultiSelFromIds(_blocks.map(function(b){ return b.id; }));
+    }
+    return;
+  }
+
+  // Ctrl/Meta+Shift+A: select all blocks of the same type as the current block
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+    if (!_isEditingText() && !_isModalOpen()) {
+      var sameTypeRef = null;
+      if (_sel) {
+        var selBlk = _blocks.find(function(b){ return b.id === _sel; });
+        if (selBlk) sameTypeRef = selBlk.type;
+      } else if (_multiSel.length > 0) {
+        var anchorBlk = _blocks.find(function(b){ return b.id === _multiSel[0]; });
+        if (anchorBlk) sameTypeRef = anchorBlk.type;
+      }
+      if (sameTypeRef) {
+        e.preventDefault();
+        setMultiSelFromIds(_blocks.filter(function(b){ return b.type === sameTypeRef; }).map(function(b){ return b.id; }));
+      }
     }
     return;
   }
