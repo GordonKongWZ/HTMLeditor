@@ -69,12 +69,12 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 }
 #scroll-nav.vis{display:flex}
 #scroll-nav button{
-  width:30px;height:28px;border:none;background:var(--ac);color:#fff;
+  width:30px;height:28px;border:none;background:#fff;color:#555;
   cursor:pointer;font-size:13px;line-height:1;transition:background .12s;
   display:flex;align-items:center;justify-content:center
 }
-#scroll-nav button:first-child{border-right:1px solid rgba(255,255,255,.25)}
-#scroll-nav button:hover{background:var(--acd)}
+#scroll-nav button:first-child{border-right:1px solid rgba(0,0,0,.08)}
+#scroll-nav button:hover{background:#f0f0f0}
 
 /* Empty hint */
 #ehint{
@@ -262,7 +262,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
 
 /* Preview outer */
 #pouter{
-  flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:16px;
+  flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:16px;position:relative;
   background:
     repeating-linear-gradient(0deg,transparent,transparent 19px,rgba(0,0,0,.04) 20px),
     repeating-linear-gradient(90deg,transparent,transparent 19px,rgba(0,0,0,.04) 20px),
@@ -870,14 +870,6 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
 
   <!-- Block editor -->
   <div id="beditor">
-    <div id="scroll-nav">
-      <button id="scroll-top-btn" title="回到顶部">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M18 15l-6-6-6 6"/></svg>
-      </button>
-      <button id="scroll-bot-btn" title="跳到底部">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-    </div>
     <div id="blist">
       <div id="ehint">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -937,6 +929,14 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
     </select>
   </div>
   <div id="pouter" class="pv-resp">
+    <div id="scroll-nav">
+      <button id="scroll-top-btn" title="回到顶部">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+      <button id="scroll-bot-btn" title="跳到底部">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
     <div id="pfwrap"><iframe id="pframe" scrolling="yes"></iframe></div>
   </div>
 </div>
@@ -5790,10 +5790,10 @@ window.addEventListener('load', function(){
 
 /* ── Scroll nav split button ── */
 $id('scroll-top-btn').addEventListener('click', function(){
-  $id('beditor').scrollTo({top:0, behavior:'smooth'});
+  $id('pouter').scrollTo({top:0, behavior:'smooth'});
 });
 $id('scroll-bot-btn').addEventListener('click', function(){
-  var ed=$id('beditor');
+  var ed=$id('pouter');
   ed.scrollTo({top:ed.scrollHeight, behavior:'smooth'});
 });
 </script>
