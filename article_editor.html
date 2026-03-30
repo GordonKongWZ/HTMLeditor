@@ -4036,6 +4036,12 @@ function _parseGenericHtmlToBlocks(container) {
         }
         blocks.push(mkBlock('table', { headerRows: headerRows2, headers: headerRows2[0]||[], rows: rows2, caption: '', tablenum: '' }));
       }
+    } else if (tag === 'div' && el.classList.contains('eq')) {
+      var eqRaw2 = el.textContent.trim().replace(/^\$\$/, '').replace(/\$\$$/, '').trim();
+      blocks.push(mkBlock('eq', { raw: eqRaw2, label: el.getAttribute('data-eqlabel') || '' }));
+    } else if (tag === 'div' && el.classList.contains('eq-inline')) {
+      var eqiRaw = el.textContent.trim().replace(/^\$/, '').replace(/\$$/, '').trim();
+      blocks.push(mkBlock('eq-inline', { raw: eqiRaw }));
     } else if (tag === 'div' || tag === 'section' || tag === 'article' || tag === 'main') {
       var sub = _parseGenericHtmlToBlocks(el);
       if (sub.length) blocks = blocks.concat(sub);
