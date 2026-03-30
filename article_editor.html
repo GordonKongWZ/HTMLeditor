@@ -117,6 +117,7 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   background:transparent;color:var(--acm);cursor:pointer;padding:0;transition:all .1s
 }
 .bt-save-btn:hover{background:var(--ac);border-color:var(--acd);color:#fff}
+.bi.msel .bt-save-btn{display:none}
 
 /* Block inner */
 .binn{padding:6px 8px}
@@ -929,6 +930,9 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
   <div class="cxi" id="cx-copy">⧉ 复制块</div>
   <div class="cxi cx-so" id="cx-paste">⎘ 粘贴块</div>
   <div class="cxi" id="cx-dup">↓ 复制到文末</div>
+  <div class="cxs"></div>
+  <div class="cxi cx-so" id="cx-save-lib">+ 存入组件库</div>
+  <div class="cxi cx-msel-only" id="cx-combine-lib">⊕ 组合为自定义组件</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
 </div>
@@ -3454,6 +3458,13 @@ $id('cx-del').addEventListener('click', function(){
     deleteBlock(_ctxId);
   }
 });
+$id('cx-save-lib').addEventListener('click', function(){
+  var b = _blocks.find(function(x){ return x.id === _ctxId; });
+  if (b) addToLibrary(b);
+});
+$id('cx-combine-lib').addEventListener('click', function(){
+  if (_multiSel.length > 0) addMultiToLibrary(_multiSel.slice());
+});
 
 /* =========================================================
    TREE VIEW CONTEXT MENU
@@ -5287,6 +5298,26 @@ function addToLibrary(b) {
   _clItems.push(item);
   _clSave();
   /* Open the library pane so user sees the new item */
+  if (_ceMode !== 'cl') switchCeTab('cl');
+  else renderClLib();
+}
+
+function addMultiToLibrary(ids) {
+  var orderedBlocks = _blocks.filter(function(b){ return ids.indexOf(b.id) >= 0; });
+  if (!orderedBlocks.length) return;
+  var combinedHtml = orderedBlocks.map(b2html).join('\n');
+  var name = prompt('请输入组件名称：', '组合组件 (' + orderedBlocks.length + ' 个块)');
+  if (name === null) return; // cancelled
+  if (!name.trim()) name = '组合组件';
+  var rawBlock = mkBlock('raw', { html: combinedHtml });
+  var item = {
+    id:    _clUid(),
+    label: name.trim(),
+    type:  'raw',
+    block: rawBlock
+  };
+  _clItems.push(item);
+  _clSave();
   if (_ceMode !== 'cl') switchCeTab('cl');
   else renderClLib();
 }
