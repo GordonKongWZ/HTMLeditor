@@ -332,12 +332,15 @@ body{font-family:var(--fs);background:var(--bg2);color:var(--t0);-webkit-font-sm
   border-radius:var(--r8);padding:3px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:130px
 }
 #ctxm.open{display:block}
+#ctxm:not(.msel) .cx-msel-only{display:none}
+#ctxm.msel .cx-so{display:none}
 .cxi{
   padding:5px 11px;font-size:11px;color:var(--t0);border-radius:var(--r4);
   cursor:pointer;display:flex;align-items:center;gap:5px
 }
 .cxi:hover{background:var(--acl);color:var(--ac)}
 .cxi.danger:hover{background:#fcebeb;color:#791f1f}
+.cxi.disabled{opacity:.4;pointer-events:none}
 .cxs{height:1px;background:var(--bl);margin:2px 0}
 
 /* Scrollbars */
@@ -918,10 +921,14 @@ kbd.sc-unbound{background:var(--bg2);border-color:var(--bl);color:var(--t2);font
 
 <!-- Context Menu (editor area) -->
 <div id="ctxm">
-  <div class="cxi" id="cx-up">↑ 上移</div>
-  <div class="cxi" id="cx-dn">↓ 下移</div>
-  <div class="cxs"></div>
-  <div class="cxi" id="cx-dup">⧉ 复制块</div>
+  <div class="cxi cx-msel-only" id="cx-msel-info" style="opacity:.55;cursor:default;pointer-events:none"></div>
+  <div class="cxs cx-msel-only"></div>
+  <div class="cxi cx-so" id="cx-up">↑ 上移</div>
+  <div class="cxi cx-so" id="cx-dn">↓ 下移</div>
+  <div class="cxs cx-so"></div>
+  <div class="cxi" id="cx-copy">⧉ 复制块</div>
+  <div class="cxi cx-so" id="cx-paste">⎘ 粘贴块</div>
+  <div class="cxi" id="cx-dup">↓ 复制到文末</div>
   <div class="cxs"></div>
   <div class="cxi danger" id="cx-del">✕ 删除</div>
 </div>
@@ -1149,6 +1156,7 @@ var _blocks  = [];
 var _sel     = null;
 var _multiSel = [];          /* array of block IDs in multi-selection */
 var _multiSelAnchor = null;  /* anchor block ID for shift-range select */
+var _blockClip = null;       /* clipboard for block copy/paste */
 var _frMatches = [];         /* [{bid, nth}] one entry per match occurrence */
 var _frCursor  = -1;         /* index into _frMatches, current match */
 var _frMarkEls = [];         /* <mark> elements injected into editor DOM for current search */
@@ -2912,12 +2920,39 @@ function deleteBlock(id) {
 function duplicateBlock(id) {
   var src=_blocks.find(function(b){ return b.id===id; }); if(!src) return;
   var copy = JSON.parse(JSON.stringify(src)); copy.id=uid();
-  var i=_blocks.findIndex(function(b){ return b.id===id; });
-  _blocks.splice(i+1,0,copy);
-  var origEl=$id(id);
+  _blocks.push(copy);
   var newEl = _buildBlockEl(copy);
-  if(origEl&&origEl.nextSibling) origEl.parentNode.insertBefore(newEl,origEl.nextSibling);
-  else $id('blist').appendChild(newEl);
+  $id('blist').appendChild(newEl);
+  _updateCount(); syncCode(); schedPv();
+}
+
+function copyBlockToClip(id) {
+  var src=_blocks.find(function(b){ return b.id===id; }); if(!src) return;
+  _blockClip = [JSON.parse(JSON.stringify(src))];
+}
+
+function copyMultiSelToClip() {
+  if (!_multiSel.length) return;
+  var ordered = _blocks.filter(function(b){ return _multiSel.indexOf(b.id) >= 0; });
+  if (!ordered.length) return;
+  _blockClip = JSON.parse(JSON.stringify(ordered));
+}
+
+function pasteBlock(id) {
+  if (!_blockClip || !_blockClip.length) return;
+  var insertAfter = id;
+  var origEl = $id(id);
+  _blockClip.forEach(function(src) {
+    var copy = JSON.parse(JSON.stringify(src)); copy.id = uid();
+    var i = _blocks.findIndex(function(b){ return b.id === insertAfter; });
+    if (i < 0) { _blocks.push(copy); }
+    else { _blocks.splice(i + 1, 0, copy); }
+    var refEl = $id(insertAfter);
+    var newEl = _buildBlockEl(copy);
+    if (refEl && refEl.nextSibling) refEl.parentNode.insertBefore(newEl, refEl.nextSibling);
+    else $id('blist').appendChild(newEl);
+    insertAfter = copy.id;
+  });
   _updateCount(); syncCode(); schedPv();
 }
 
@@ -3372,14 +3407,50 @@ function applyScale(){
    CONTEXT MENU
    ========================================================= */
 function _openCtx(e, id) {
+  // Select the right-clicked block (exit multi-select if clicking outside selection)
+  if (_multiSel.length > 0) {
+    if (_multiSel.indexOf(id) < 0) { clearMultiSel(); setSelected(id); }
+  } else {
+    setSelected(id);
+  }
   _ctxId=id;
-  var m=$id('ctxm'); m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('open');
+  var inMulti = _multiSel.length > 0 && _multiSel.indexOf(id) >= 0;
+  var m=$id('ctxm');
+  m.classList.toggle('msel', inMulti);
+  if (inMulti) {
+    $id('cx-msel-info').textContent = '☰ ' + _multiSel.length + ' 个块已选中';
+    $id('cx-dup').textContent = '↓ 全部复制到文末';
+    $id('cx-copy').textContent = '⧉ 复制选中块';
+    $id('cx-del').textContent = '✕ 全部删除';
+  } else {
+    $id('cx-dup').textContent = '↓ 复制到文末';
+    $id('cx-copy').textContent = '⧉ 复制块';
+    $id('cx-del').textContent = '✕ 删除';
+    // Update paste item availability
+    $id('cx-paste').classList.toggle('disabled', !_blockClip);
+  }
+  m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('open');
 }
 
 $id('cx-up').addEventListener('click', function(){moveBlock(_ctxId,-1);});
 $id('cx-dn').addEventListener('click', function(){moveBlock(_ctxId, 1);});
-$id('cx-dup').addEventListener('click', function(){duplicateBlock(_ctxId);});
-$id('cx-del').addEventListener('click', function(){deleteBlock(_ctxId);});
+$id('cx-copy').addEventListener('click', function(){
+  if (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) { copyMultiSelToClip(); }
+  else { copyBlockToClip(_ctxId); }
+});
+$id('cx-paste').addEventListener('click', function(){pasteBlock(_ctxId);});
+$id('cx-dup').addEventListener('click', function(){
+  var ids = (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) ? _multiSel.slice() : [_ctxId];
+  ids.forEach(function(id){ duplicateBlock(id); });
+});
+$id('cx-del').addEventListener('click', function(){
+  if (_multiSel.length > 0 && _multiSel.indexOf(_ctxId) >= 0) {
+    var ids = _multiSel.slice(); clearMultiSel();
+    ids.forEach(function(id){ deleteBlock(id); });
+  } else {
+    deleteBlock(_ctxId);
+  }
+});
 
 /* =========================================================
    TREE VIEW CONTEXT MENU
@@ -4812,7 +4883,9 @@ var SC_DEFS = [
   { id:'blk-up',    label:'上移选中块',         cat:'block',  def:'↑',      fixed:true },
   { id:'blk-dn',    label:'下移选中块',         cat:'block',  def:'↓',      fixed:true },
   { id:'blk-del',   label:'删除选中块',         cat:'block',  def:'Delete', fixed:true },
-  { id:'blk-dup',   label:'复制选中块',         cat:'block',  def:'Ctrl+D', fixed:true },
+  { id:'blk-dup',   label:'复制选中块到文末',   cat:'block',  def:'Ctrl+D', fixed:true },
+  { id:'blk-copy',  label:'复制块到剪切板',     cat:'block',  def:'Ctrl+C', fixed:true },
+  { id:'blk-paste', label:'粘贴块',             cat:'block',  def:'Ctrl+V', fixed:true },
   { id:'blk-esc',   label:'取消选中',           cat:'block',  def:'Escape', fixed:true },
   { id:'fmt-b',     label:'粗体',               cat:'rich',   def:'Ctrl+B', fixed:true },
   { id:'fmt-i',     label:'斜体',               cat:'rich',   def:'Ctrl+I', fixed:true },
@@ -5017,6 +5090,12 @@ function _isModalOpen() {
 document.addEventListener('paste', function(e) {
   if (_isEditingText()) return; // let native paste handle text fields
   if (_isModalOpen()) return;   // dialog is open, don't intercept
+  // If block clipboard has a block, paste it after selected block
+  if (_blockClip) {
+    e.preventDefault();
+    pasteBlock(_sel || (_blocks.length ? _blocks[_blocks.length - 1].id : null));
+    return;
+  }
   e.preventDefault();
   var html = e.clipboardData ? e.clipboardData.getData('text/html') : '';
   var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
@@ -5048,11 +5127,20 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // Ctrl/Meta+D: duplicate selected block
+  // Ctrl/Meta+D: duplicate selected block (append to end)
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd') {
     if (!_isEditingText() && !_isModalOpen() && _sel) {
       e.preventDefault();
       duplicateBlock(_sel);
+    }
+    return;
+  }
+
+  // Ctrl/Meta+C: copy selected block(s) to block clipboard (when not editing text)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'c') {
+    if (!_isEditingText() && !_isModalOpen()) {
+      if (_multiSel.length > 0) { e.preventDefault(); copyMultiSelToClip(); }
+      else if (_sel) { e.preventDefault(); copyBlockToClip(_sel); }
     }
     return;
   }
@@ -5062,6 +5150,15 @@ document.addEventListener('keydown', function(e) {
       (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')) {
     e.preventDefault();
     openFR();
+    return;
+  }
+
+  // Ctrl/Meta+A: select all blocks (when not editing text)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'a') {
+    if (!_isEditingText() && !_isModalOpen() && _blocks.length > 0) {
+      e.preventDefault();
+      setMultiSelFromIds(_blocks.map(function(b){ return b.id; }));
+    }
     return;
   }
 
